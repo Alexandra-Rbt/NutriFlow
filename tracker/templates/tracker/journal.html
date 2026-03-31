@@ -1,0 +1,166 @@
+{% extends 'base.html' %}
+{% block title %}Jurnal alimentar — NutriFlow{% endblock %}
+{% block content %}
+<div class="page-container">
+  <div class="page-header">
+    <h1>📓 Jurnal alimentar</h1>
+    <p>Toate mesele tale, organizate pe zile</p>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 2fr;gap:24px;align-items:start">
+
+    {# ── FORM ADAUGARE ──────────────────────────── #}
+    <div class="card animate-in">
+      <div class="card-header">
+        <div class="card-title"><span class="icon">➕</span> Adaugă aliment</div>
+      </div>
+      <form method="POST" action="{% url 'log_add' %}">
+        {% csrf_token %}
+        <div class="form-group">
+          <label class="form-label">Aliment</label>
+          <select name="food" id="id_food" class="form-control form-select">
+            <option value="">— Alege aliment —</option>
+            {% for food in form.food.field.queryset %}
+              <option value="{{ food.pk }}">{{ food.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Grame</label>
+          <input type="number" name="grams" id="id_grams" class="form-control"
+                 placeholder="ex: 150" min="1" step="1">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Masă</label>
+          <select name="meal_type" class="form-control form-select">
+            <option value="breakfast">Mic dejun</option>
+            <option value="lunch" selected>Prânz</option>
+            <option value="dinner">Cină</option>
+            <option value="snack">Gustare</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Data</label>
+          <input type="date" name="date" class="form-control"
+                 value="{{ filter_date|date:'Y-m-d' }}">
+        </div>
+
+        {# Preview nutritional live #}
+        <div id="nutrition-preview" class="nutrition-preview" style="display:none;margin-bottom:12px">
+          <div class="np-row">
+            <span class="np-label">Calorii</span>
+            <span class="np-val"><span id="preview-kcal">0</span> kcal</span>
+          </div>
+          <div class="np-row">
+            <span class="np-label">Proteine</span>
+            <span class="np-val" style="color:var(--color-protein)" id="preview-protein">0g</span>
+          </div>
+          <div class="np-row">
+            <span class="np-label">Carbohidrați</span>
+            <span class="np-val" style="color:var(--color-carbs)" id="preview-carbs">0g</span>
+          </div>
+          <div class="np-row">
+            <span class="np-label">Grăsimi</span>
+            <span class="np-val" style="color:var(--color-fat)" id="preview-fat">0g</span>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width:100%">➕ Adaugă</button>
+      </form>
+    </div>
+
+    {# ── JURNAL ──────────────────────────────────── #}
+    <div>
+      {# Navigare data #}
+      <div class="card animate-in" style="margin-bottom:16px;padding:1rem 1.25rem">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <a href="?date={{ filter_date|date:'Y-m-d' }}" class="btn btn-secondary btn-sm">Azi</a>
+          <form method="GET" style="display:flex;align-items:center;gap:8px;flex:1">
+            <input type="date" name="date" class="form-control"
+                   value="{{ filter_date|date:'Y-m-d' }}"
+                   style="max-width:180px"
+                   onchange="this.form.submit()">
+          </form>
+          <div style="font-size:13px;color:var(--text-muted)">
+            {{ filter_date|date:"l, d F Y" }}
+          </div>
+        </div>
+      </div>
+
+      {# Totaluri zilei #}
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px">
+        <div class="stat-card animate-in" style="animation-delay:0.05s">
+          <div class="s-label">Calorii</div>
+          <div class="s-value" style="font-size:1.4rem">{{ totals.kcal }}</div>
+          <div style="font-size:11px;color:var(--text-muted)">kcal</div>
+        </div>
+        <div class="stat-card animate-in" style="animation-delay:0.1s;--accent:var(--color-protein)">
+          <div class="s-label">Proteine</div>
+          <div class="s-value" style="font-size:1.4rem;color:var(--color-protein)">{{ totals.protein }}</div>
+          <div style="font-size:11px;color:var(--text-muted)">g</div>
+        </div>
+        <div class="stat-card animate-in" style="animation-delay:0.15s;--accent:var(--color-carbs)">
+          <div class="s-label">Carbo.</div>
+          <div class="s-value" style="font-size:1.4rem;color:var(--color-carbs)">{{ totals.carbs }}</div>
+          <div style="font-size:11px;color:var(--text-muted)">g</div>
+        </div>
+        <div class="stat-card animate-in" style="animation-delay:0.2s;--accent:var(--color-fat)">
+          <div class="s-label">Grăsimi</div>
+          <div class="s-value" style="font-size:1.4rem;color:var(--color-fat)">{{ totals.fat }}</div>
+          <div style="font-size:11px;color:var(--text-muted)">g</div>
+        </div>
+      </div>
+
+      {# Lista mese #}
+      <div class="card animate-in" style="animation-delay:0.1s">
+        <div class="card-header">
+          <div class="card-title"><span class="icon">🍽️</span> Mesele zilei</div>
+        </div>
+
+        {% if logs %}
+          {% regroup logs by get_meal_type_display as meal_list %}
+          {% for meal in meal_list %}
+          <div class="meal-section">
+            <div class="meal-section-header">
+              <span class="meal-dot"></span>
+              {{ meal.grouper }}
+              <span style="margin-left:auto;font-weight:400">
+                {{ meal.list|length }} aliment{% if meal.list|length != 1 %}e{% endif %}
+              </span>
+            </div>
+            {% for log in meal.list %}
+            <div class="food-entry">
+              <div>
+                <div class="name">{{ log.food.name }}</div>
+                <div class="gram">{{ log.grams }}g</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:16px">
+                <div style="text-align:right">
+                  <div class="kcal">{{ log.kcal }} kcal</div>
+                  <div style="font-size:11px;color:var(--text-muted)">
+                    P:{{ log.protein_g }}g &middot; C:{{ log.carbs_g }}g &middot; G:{{ log.fat_g }}g
+                  </div>
+                </div>
+                <form method="POST" action="{% url 'log_delete' log.pk %}">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-danger btn-sm btn-icon"
+                          onclick="return confirm('Stergi aceasta intrare?')">✕</button>
+                </form>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="empty-state">
+            <div class="empty-icon">🍽️</div>
+            <p>Nicio intrare pentru {{ filter_date|date:"d F Y" }}.<br>
+               Adaugă un aliment din formularul din stânga!</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

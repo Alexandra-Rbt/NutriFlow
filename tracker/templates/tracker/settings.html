@@ -1,0 +1,166 @@
+{% extends 'base.html' %}
+{% block title %}Setări — NutriFlow{% endblock %}
+
+{% block content %}
+<div class="page-container">
+
+  <div class="page-header">
+    <h1>⚙️ Setări</h1>
+    <p>Personalizează aplicația și profilul tău</p>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start">
+
+    {# ── TEMA ───────────────────────────────────── #}
+    <div class="card animate-in">
+      <div class="card-header">
+        <div class="card-title"><span class="icon">🎨</span> Tema aplicației</div>
+        <span id="theme-saved-badge" style="display:none"
+              class="badge badge-accent">✓ Salvat</span>
+      </div>
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:1.25rem">
+        Alege stilul vizual preferat. Schimbarea se aplică imediat și se salvează în contul tău.
+      </p>
+
+      <div class="theme-grid">
+        {% for t in themes %}
+        <div class="theme-option {% if profile.theme == t.key %}active{% endif %}"
+             data-theme="{{ t.key }}">
+          <div class="theme-check">✓</div>
+          {# Bara de culoare reprezentativa pentru fiecare tema #}
+          <div class="theme-preview-bar"
+               style="background:{% if t.key == 'dark-aura' %}linear-gradient(90deg,#a78bfa,#7c3aed)
+                      {% elif t.key == 'fresh-mint' %}linear-gradient(90deg,#10b981,#34d399)
+                      {% elif t.key == 'warm-coral' %}linear-gradient(90deg,#ff6b47,#ff8f6b)
+                      {% else %}linear-gradient(90deg,#0ea5e9,#38bdf8){% endif %}">
+          </div>
+          {# Mini preview #}
+          <div style="padding:10px 12px 8px;background:{% if t.key == 'dark-aura' %}#13131f
+               {% elif t.key == 'fresh-mint' %}#f0fdf4
+               {% elif t.key == 'warm-coral' %}#fff7f5
+               {% else %}#f1f5f9{% endif %}">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+              <div style="width:40%;height:6px;border-radius:3px;background:{% if t.key == 'dark-aura' %}#a78bfa
+                   {% elif t.key == 'fresh-mint' %}#10b981
+                   {% elif t.key == 'warm-coral' %}#ff6b47
+                   {% else %}#0ea5e9{% endif %}"></div>
+              <div style="width:20%;height:6px;border-radius:3px;background:{% if t.key == 'dark-aura' %}#1a1a2e
+                   {% elif t.key == 'fresh-mint' %}#d1fae5
+                   {% elif t.key == 'warm-coral' %}#ffe0d6
+                   {% else %}#e2e8f0{% endif %}"></div>
+            </div>
+            <div style="display:flex;gap:4px">
+              {% for i in "123" %}
+              <div style="flex:1;height:22px;border-radius:4px;background:{% if t.key == 'dark-aura' %}#1a1a2e
+                   {% elif t.key == 'fresh-mint' %}#ecfdf5
+                   {% elif t.key == 'warm-coral' %}#fff0ec
+                   {% else %}#f8fafc{% endif %}"></div>
+              {% endfor %}
+            </div>
+          </div>
+          <div class="theme-info">
+            <div class="theme-name">{{ t.name }}</div>
+            <div class="theme-desc">{{ t.desc }}</div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    {# ── PROFIL ─────────────────────────────────── #}
+    <div class="card animate-in" style="animation-delay:0.1s">
+      <div class="card-header">
+        <div class="card-title"><span class="icon">👤</span> Profilul meu</div>
+      </div>
+      <form method="POST">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="update_profile">
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="form-group">
+            <label class="form-label">Data nașterii</label>
+            <input type="date" name="birth_date" class="form-control"
+                   value="{{ profile.birth_date|date:'Y-m-d'|default:'' }}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Gen</label>
+            <select name="gender" class="form-control form-select">
+              <option value="">—</option>
+              {% for val, lbl in profile.GENDER_CHOICES %}
+                <option value="{{ val }}" {% if profile.gender == val %}selected{% endif %}>{{ lbl }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Înălțime (cm)</label>
+            <input type="number" name="height_cm" class="form-control"
+                   value="{{ profile.height_cm|default:'' }}" min="100" max="250">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Nivel activitate</label>
+            <select name="activity_level" class="form-control form-select">
+              {% for val, lbl in profile.ACTIVITY_CHOICES %}
+                <option value="{{ val }}" {% if profile.activity_level == val %}selected{% endif %}>{{ lbl }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Obiectiv</label>
+          <select name="goal" class="form-control form-select">
+            {% for val, lbl in profile.GOAL_CHOICES %}
+              <option value="{{ val }}" {% if profile.goal == val %}selected{% endif %}>{{ lbl }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div style="border-top:1px solid var(--divider);padding-top:1rem;margin-top:1rem">
+          <p style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.4px;
+                    color:var(--text-muted);margin-bottom:12px">Obiective zilnice</p>
+          <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px">
+            <div class="form-group">
+              <label class="form-label">Calorii (kcal)</label>
+              <input type="number" name="daily_kcal_target" class="form-control"
+                     value="{{ profile.daily_kcal_target }}" min="500" max="10000">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Proteine (g)</label>
+              <input type="number" name="protein_target_g" class="form-control"
+                     value="{{ profile.protein_target_g }}" min="10" max="500">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Carbohidrați (g)</label>
+              <input type="number" name="carbs_target_g" class="form-control"
+                     value="{{ profile.carbs_target_g }}" min="10" max="1000">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Grăsimi (g)</label>
+              <input type="number" name="fat_target_g" class="form-control"
+                     value="{{ profile.fat_target_g }}" min="10" max="500">
+            </div>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width:100%;margin-top:8px">
+          💾 Salvează profilul
+        </button>
+      </form>
+    </div>
+
+  </div>
+</div>
+
+{% block extra_js %}
+<script>
+// Arata badge "Salvat" dupa schimbare tema
+document.querySelectorAll('.theme-option').forEach(function(el) {
+  el.addEventListener('click', function() {
+    const badge = document.getElementById('theme-saved-badge');
+    badge.style.display = 'inline-flex';
+    setTimeout(() => { badge.style.display = 'none'; }, 3000);
+  });
+});
+</script>
+{% endblock %}
+{% endblock %}

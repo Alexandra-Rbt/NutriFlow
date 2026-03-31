@@ -1,0 +1,452 @@
+[
+    {
+        "model": "tracker.food",
+        "pk": 1,
+        "fields": {
+            "name": "Piept de pui (fiert)",
+            "category": "protein",
+            "kcal_per_100g": "165.00",
+            "protein_per_100g": "31.00",
+            "carbs_per_100g": "0.00",
+            "fat_per_100g": "3.60",
+            "fiber_per_100g": "0.00",
+            "is_custom": false,
+            "created_by": null
+        }
+    },
+    {
+        "model": "tracker.food",
+        "pk": 2,
+        "fields": {
+            "name": "Orez brun (fiert)",
+            "category": "grain",
+            "kcal_per_100g": "216.00",
+            "protein_per_100g": "4.50",
+            "carbs_per_100g": "45.80",
+            "fat_per_100g": "1.80",
+            "fiber_per_100g": "1.80",
+            "is_custom": false,
+            "created_by": null
+        }
+    },
+    {
+        "model": "tracker.food",
+        "pk": 3,
+        "fields": {
+            "name": "Orez alb (fiert)",
+            "category": "grain",
+            "kcal_per_100g": "130.00",
+            "protein_per_100g": "2.70",
+            "carbs_per_100g": "28.20",
+            "fat_per_100g": "0.30",
+            "fiber_per_100g": "0.40",
+            "is_custom": false,
+            "created_by": null
+        }
+    },
+    {
+        "model": "tracker.food",
+        "pk": 4,
+        "fields": {
+            "name": "Ou intreg (fiert)",
+            "category": "protein",
+            "kcal_per_100g": "155.00",
+            "protein_per_100g": "13.00",
+            "carbs_per_100g": "1.10",
+            "fat_per_100g": "11.00",
+            "fiber_per_100g": "0.00",
+            "is_custom": false,
+            "created_by": null
+        }
+    },
+    {
+        "model": "tracker.food",
+        "pk": 5,
+        "fields": {
+            "name": "Lapte integral",
+            "category": "dairy",
+            "kcal_per_100g": "61.00",
+            "protein_per_100g": "3.20",
+            "carbs_per_100g": "4.80",
+            "fat_per_100g": "3.30",
+            "fiber_per_100g": "0.00",
+            "is_custom": false,
+            "created_by": null
+        }
+    },
+    {
+        "model": "tracker.food",
+        "pk": 6,
+        "fields": {
+            "name": "Iaurt grecesc (0%)",
+            "category": "dairy",
+            "kcal_per_100g": "59.00",
+            "protein_per_100g": "10.00",
+            "carbs_per_100g": "3.60",
+            "fat_per_100g": "0.40",
+            "fiber_per_100g": "0.00",
+            "is_custom": false,
+            "created_by": null
+        }
+    },
+    {
+        "model": "tracker.food",
+        "pk": 7,
+        "fields": {
+            "name": "Banana",
+            "category": "fruit",
+            "kcal_per_100g": "89.00",
+            "protein_per_100g": "1.10",
+            "carbs_per_100g": "23.00",
+            "fat_per_100g": "0.30",
+            "fiber_per_100g": "2.60",
+            "is_custom": false,
+            "created_by": null
+        }
+    },
+    {
+        "model": "tracker.food",
+        "pk": 8,
+        "fields": {
+            "name": "Mar",
+            "category": "fruit",
+            "kcal_per_100g": "52.00",
+            "protein_per_100g": "0.30",
+            "carbs_per_100g": "14.00",
+            "fat_per_100g": "0.20",
+            "fiber_per_100g": "2.40",
+            "is_custom": false,
+            "created_by": null
+        }
+    },
+    {
+        "model": "tracker.food",
+        "pk": 9,
+        "fields": {
+            "name": "Salata verde",
+            "category": "vegetable",
+            "kcal_per_100g": "15.00",
+            "protein_per_100g": "1.40",
+            "carbs_per_100g": "2.90",
+            "fat_per_100g": "0.20",
+            "fiber_per_100g": "1.30",
+            "is_custom": false,
+            "created_by": null
+        }
+    },
+    {
+        "model": "tracker.food",
+        "pk": 10,
+        "fields": {
+            "name": "Tomate",
+            "category": "vegetable",
+            "kcal_per_100g": "18.00",
+            "protein_per_100g": "0.90",
+            "carbs_per_100g": "3.90",
+            "fat_per_100g": "0.20",
+            "fiber_per_100g": "1.20",
+            "is_custom": false,
+            "created_by": null
+        }
+    },
+    {
+        "model": "tracker.food",
+        "pk": 11,
+        "fields": {
+            "name": "Castravete",
+            "category": "vegetable",
+            "kcal_per_100g": "16.00",
+            "protein_per_100g": "0.70",
+            "carbs_per_100g": "3.60",
+            "fat_per_100g": "0.10",
+            "fiber_per_100g": "0.50",
+            "is_custom": false,
+            "created_by": null
+        }
+    },
+    {
+        "model": "tracker.food",
+        "pk": 12,
+        "fields": {
+            "name": "Broccoli (fiert)",
+            "category": "vegetable",
+            "kcal_per_100g": "35.00",
+            "protein_per_100g": "2.40",
+            "carbs_per_100g": "7.20",
+            "fat_per_100g": "0.40",
+            "fiber_per_100g": "3.30",
+            "is_custom": false,
+            "created_by": null
+        }
+    },
+    {
+        "model": "tracker.food",
+        "pk": 13,
+        "fields": {
+            "name": "Paste integrale (fierte)",
+            "category": "grain",
+            "kcal_per_100g": "124.00",
+            "protein_per_100g": "5.30",
+            "carbs_per_100g": "26.50",
+            "fat_per_100g": "1.10",
+            "fiber_per_100g": "3.20",
+            "is_custom": false,
+            "created_by": null
+        }
+    },
+    {
+        "model": "tracker.food",
+        "pk": 14,
+        "fields": {
+            "name": "Paine alba",
+            "category": "grain",
+            "kcal_per_100g": "265.00",
+            "protein_per_100g": "9.00",
+            "carbs_per_100g": "49.00",
+            "fat_per_100g": "3.20",
+            "fiber_per_100g": "2.70",
+            "is_custom": false,
+            "created_by": null
+        }
+    },
+    {
+        "model": "tracker.food",
+        "pk": 15,
+        "fields": {
+            "name": "Paine integrala",
+            "category": "grain",
+            "kcal_per_100g": "247.00",
+            "protein_per_100g": "8.00",
+            "carbs_per_100g": "41.00",
+            "fat_per_100g": "3.40",
+            "fiber_per_100g": "6.90",
+            "is_custom": false,
+            "created_by": null
+        }
+    },
+    {
+        "model": "tracker.food",
+        "pk": 16,
+        "fields": {
+            "name": "Somon (fript)",
+            "category": "protein",
+            "kcal_per_100g": "208.00",
+            "protein_per_100g": "20.00",
+            "carbs_per_100g": "0.00",
+            "fat_per_100g": "13.00",
+            "fiber_per_100g": "0.00",
+            "is_custom": false,
+            "created_by": null
+        }
+    },
+    {
+        "model": "tracker.food",
+        "pk": 17,
+        "fields": {
+            "name": "Ton la conserva (in apa)",
+            "category": "protein",
+            "kcal_per_100g": "116.00",
+            "protein_per_100g": "26.00",
+            "carbs_per_100g": "0.00",
+            "fat_per_100g": "1.00",
+            "fiber_per_100g": "0.00",
+            "is_custom": false,
+            "created_by": null
+        }
+    },
+    {
+        "model": "tracker.food",
+        "pk": 18,
+        "fields": {
+            "name": "Piept de curcan",
+            "category": "protein",
+            "kcal_per_100g": "135.00",
+            "protein_per_100g": "30.00",
+            "carbs_per_100g": "0.00",
+            "fat_per_100g": "1.00",
+            "fiber_per_100g": "0.00",
+            "is_custom": false,
+            "created_by": null
+        }
+    },
+    {
+        "model": "tracker.food",
+        "pk": 19,
+        "fields": {
+            "name": "Unt de arahide",
+            "category": "fat",
+            "kcal_per_100g": "588.00",
+            "protein_per_100g": "25.00",
+            "carbs_per_100g": "20.00",
+            "fat_per_100g": "50.00",
+            "fiber_per_100g": "6.00",
+            "is_custom": false,
+            "created_by": null
+        }
+    },
+    {
+        "model": "tracker.food",
+        "pk": 20,
+        "fields": {
+            "name": "Ulei de masline",
+            "category": "fat",
+            "kcal_per_100g": "884.00",
+            "protein_per_100g": "0.00",
+            "carbs_per_100g": "0.00",
+            "fat_per_100g": "100.00",
+            "fiber_per_100g": "0.00",
+            "is_custom": false,
+            "created_by": null
+        }
+    },
+    {
+        "model": "tracker.food",
+        "pk": 21,
+        "fields": {
+            "name": "Avocado",
+            "category": "fat",
+            "kcal_per_100g": "160.00",
+            "protein_per_100g": "2.00",
+            "carbs_per_100g": "9.00",
+            "fat_per_100g": "15.00",
+            "fiber_per_100g": "7.00",
+            "is_custom": false,
+            "created_by": null
+        }
+    },
+    {
+        "model": "tracker.food",
+        "pk": 22,
+        "fields": {
+            "name": "Migdale",
+            "category": "snack",
+            "kcal_per_100g": "579.00",
+            "protein_per_100g": "21.00",
+            "carbs_per_100g": "22.00",
+            "fat_per_100g": "50.00",
+            "fiber_per_100g": "12.50",
+            "is_custom": false,
+            "created_by": null
+        }
+    },
+    {
+        "model": "tracker.food",
+        "pk": 23,
+        "fields": {
+            "name": "Ovaz (fulgi)",
+            "category": "grain",
+            "kcal_per_100g": "389.00",
+            "protein_per_100g": "17.00",
+            "carbs_per_100g": "66.00",
+            "fat_per_100g": "7.00",
+            "fiber_per_100g": "10.60",
+            "is_custom": false,
+            "created_by": null
+        }
+    },
+    {
+        "model": "tracker.food",
+        "pk": 24,
+        "fields": {
+            "name": "Quinoa (fiarta)",
+            "category": "grain",
+            "kcal_per_100g": "120.00",
+            "protein_per_100g": "4.40",
+            "carbs_per_100g": "21.30",
+            "fat_per_100g": "1.90",
+            "fiber_per_100g": "2.80",
+            "is_custom": false,
+            "created_by": null
+        }
+    },
+    {
+        "model": "tracker.food",
+        "pk": 25,
+        "fields": {
+            "name": "Fasole rosie (fiarta)",
+            "category": "protein",
+            "kcal_per_100g": "127.00",
+            "protein_per_100g": "8.70",
+            "carbs_per_100g": "22.80",
+            "fat_per_100g": "0.50",
+            "fiber_per_100g": "6.40",
+            "is_custom": false,
+            "created_by": null
+        }
+    },
+    {
+        "model": "tracker.food",
+        "pk": 26,
+        "fields": {
+            "name": "Cartofi fierti",
+            "category": "vegetable",
+            "kcal_per_100g": "87.00",
+            "protein_per_100g": "1.90",
+            "carbs_per_100g": "20.10",
+            "fat_per_100g": "0.10",
+            "fiber_per_100g": "1.80",
+            "is_custom": false,
+            "created_by": null
+        }
+    },
+    {
+        "model": "tracker.food",
+        "pk": 27,
+        "fields": {
+            "name": "Cascaval",
+            "category": "dairy",
+            "kcal_per_100g": "402.00",
+            "protein_per_100g": "25.00",
+            "carbs_per_100g": "1.30",
+            "fat_per_100g": "33.00",
+            "fiber_per_100g": "0.00",
+            "is_custom": false,
+            "created_by": null
+        }
+    },
+    {
+        "model": "tracker.food",
+        "pk": 28,
+        "fields": {
+            "name": "Branza de vaci",
+            "category": "dairy",
+            "kcal_per_100g": "98.00",
+            "protein_per_100g": "11.00",
+            "carbs_per_100g": "3.40",
+            "fat_per_100g": "4.30",
+            "fiber_per_100g": "0.00",
+            "is_custom": false,
+            "created_by": null
+        }
+    },
+    {
+        "model": "tracker.food",
+        "pk": 29,
+        "fields": {
+            "name": "Portocala",
+            "category": "fruit",
+            "kcal_per_100g": "47.00",
+            "protein_per_100g": "0.90",
+            "carbs_per_100g": "12.00",
+            "fat_per_100g": "0.10",
+            "fiber_per_100g": "2.40",
+            "is_custom": false,
+            "created_by": null
+        }
+    },
+    {
+        "model": "tracker.food",
+        "pk": 30,
+        "fields": {
+            "name": "Capsuni",
+            "category": "fruit",
+            "kcal_per_100g": "32.00",
+            "protein_per_100g": "0.70",
+            "carbs_per_100g": "7.70",
+            "fat_per_100g": "0.30",
+            "fiber_per_100g": "2.00",
+            "is_custom": false,
+            "created_by": null
+        }
+    }
+]

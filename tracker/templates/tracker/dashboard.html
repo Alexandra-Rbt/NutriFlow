@@ -1,0 +1,241 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard — NutriFlow{% endblock %}
+
+{% block content %}
+<div class="page-container">
+
+  <div class="page-header">
+    <h1>Bună ziua, {{ user.first_name|default:user.username }}! 👋</h1>
+    <p>{{ today|date:"l, d F Y" }} — iată cum stai astăzi</p>
+  </div>
+
+  {# ── STAT CARDS ─────────────────────────────── #}
+  <div class="stats-row">
+    <div class="stat-card animate-in" style="animation-delay:0s">
+      <div class="s-label">Calorii</div>
+      <div>
+        <span class="s-value">{{ total_kcal }}</span>
+        <span class="s-unit">/ {{ profile.daily_kcal_target }} kcal</span>
+      </div>
+      <div class="s-bar">
+        <div class="s-bar-fill" data-pct="{{ pct_kcal }}" style="width:0%"></div>
+      </div>
+    </div>
+
+    <div class="stat-card animate-in" style="animation-delay:0.08s;--accent:var(--color-protein)">
+      <div class="s-label">Proteine</div>
+      <div>
+        <span class="s-value">{{ total_protein }}</span>
+        <span class="s-unit">/ {{ profile.protein_target_g }} g</span>
+      </div>
+      <div class="s-bar">
+        <div class="s-bar-fill" data-pct="{{ pct_protein }}" style="width:0%;background:var(--color-protein)"></div>
+      </div>
+    </div>
+
+    <div class="stat-card animate-in" style="animation-delay:0.16s;--accent:var(--color-carbs)">
+      <div class="s-label">Carbohidrați</div>
+      <div>
+        <span class="s-value">{{ total_carbs }}</span>
+        <span class="s-unit">/ {{ profile.carbs_target_g }} g</span>
+      </div>
+      <div class="s-bar">
+        <div class="s-bar-fill" data-pct="{{ pct_carbs }}" style="width:0%;background:var(--color-carbs)"></div>
+      </div>
+    </div>
+
+    <div class="stat-card animate-in" style="animation-delay:0.24s;--accent:var(--color-fat)">
+      <div class="s-label">Grăsimi</div>
+      <div>
+        <span class="s-value">{{ total_fat }}</span>
+        <span class="s-unit">/ {{ profile.fat_target_g }} g</span>
+      </div>
+      <div class="s-bar">
+        <div class="s-bar-fill" data-pct="{{ pct_fat }}" style="width:0%;background:var(--color-fat)"></div>
+      </div>
+    </div>
+  </div>
+
+  {# ── GRID PRINCIPAL ──────────────────────────── #}
+  <div style="display:grid;grid-template-columns:1fr 1.6fr;gap:20px;align-items:start">
+
+    {# Inel calorii + adaugare aliment #}
+    <div>
+      <div class="card animate-in" style="animation-delay:0.1s;text-align:center;margin-bottom:16px">
+        <div class="card-title" style="justify-content:center;margin-bottom:1.5rem">
+          <span class="icon">🔥</span> Calorii azi
+        </div>
+
+        <div class="kcal-ring-wrapper">
+          <svg width="160" height="160" viewBox="0 0 160 160">
+            <circle cx="80" cy="80" r="68" fill="none"
+                    stroke="var(--ring-track)" stroke-width="10"/>
+            <circle class="kcal-ring-progress" cx="80" cy="80" r="68" fill="none"
+                    stroke="var(--ring-fill)" stroke-width="10"
+                    stroke-linecap="round"
+                    data-pct="{{ pct_kcal }}"
+                    style="stroke-dasharray:427;stroke-dashoffset:427;transition:stroke-dashoffset 1.2s ease"/>
+          </svg>
+          <div class="kcal-ring-center">
+            <div class="val">{{ total_kcal }}</div>
+            <div class="lbl">kcal</div>
+          </div>
+        </div>
+
+        <div class="macro-grid">
+          <div class="macro-item">
+            <div class="m-label">Prot.</div>
+            <div class="m-value" style="color:var(--color-protein)">
+              {{ total_protein }}<span class="m-unit">g</span>
+            </div>
+            <div class="m-bar">
+              <div class="m-bar-fill" data-pct="{{ pct_protein }}"
+                   style="width:0%;background:var(--color-protein)"></div>
+            </div>
+          </div>
+          <div class="macro-item">
+            <div class="m-label">Carbo.</div>
+            <div class="m-value" style="color:var(--color-carbs)">
+              {{ total_carbs }}<span class="m-unit">g</span>
+            </div>
+            <div class="m-bar">
+              <div class="m-bar-fill" data-pct="{{ pct_carbs }}"
+                   style="width:0%;background:var(--color-carbs)"></div>
+            </div>
+          </div>
+          <div class="macro-item">
+            <div class="m-label">Grăs.</div>
+            <div class="m-value" style="color:var(--color-fat)">
+              {{ total_fat }}<span class="m-unit">g</span>
+            </div>
+            <div class="m-bar">
+              <div class="m-bar-fill" data-pct="{{ pct_fat }}"
+                   style="width:0%;background:var(--color-fat)"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {# Form adaugare aliment #}
+      <div class="card animate-in" style="animation-delay:0.2s">
+        <div class="card-header">
+          <div class="card-title"><span class="icon">➕</span> Adaugă aliment</div>
+        </div>
+        <form method="POST" action="{% url 'log_add' %}">
+          {% csrf_token %}
+          <div class="form-group">
+            <label class="form-label">Aliment</label>
+            <select name="food" id="id_food" class="form-control form-select">
+              <option value="">— Alege aliment —</option>
+              {% for food in log_form.food.field.queryset %}
+                <option value="{{ food.pk }}">{{ food.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div class="form-group">
+              <label class="form-label">Grame</label>
+              <input type="number" name="grams" id="id_grams" class="form-control"
+                     placeholder="ex: 150" min="1" step="1">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Masă</label>
+              <select name="meal_type" class="form-control form-select">
+                <option value="breakfast">Mic dejun</option>
+                <option value="lunch" selected>Prânz</option>
+                <option value="dinner">Cină</option>
+                <option value="snack">Gustare</option>
+              </select>
+            </div>
+          </div>
+          <input type="hidden" name="date" value="{{ today|date:'Y-m-d' }}">
+
+          {# Preview nutritional live #}
+          <div id="nutrition-preview" class="nutrition-preview animate-in" style="display:none;margin-bottom:12px">
+            <div class="np-row">
+              <span class="np-label">Calorii</span>
+              <span class="np-val"><span id="preview-kcal">0</span> kcal</span>
+            </div>
+            <div class="np-row">
+              <span class="np-label">Proteine</span>
+              <span class="np-val" style="color:var(--color-protein)" id="preview-protein">0g</span>
+            </div>
+            <div class="np-row">
+              <span class="np-label">Carbohidrați</span>
+              <span class="np-val" style="color:var(--color-carbs)" id="preview-carbs">0g</span>
+            </div>
+            <div class="np-row">
+              <span class="np-label">Grăsimi</span>
+              <span class="np-val" style="color:var(--color-fat)" id="preview-fat">0g</span>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary" style="width:100%">
+            ➕ Adaugă în jurnal
+          </button>
+        </form>
+      </div>
+    </div>
+
+    {# Jurnalul zilei + grafic #}
+    <div>
+      {# Grafic 7 zile #}
+      <div class="card animate-in" style="animation-delay:0.15s;margin-bottom:16px">
+        <div class="card-header">
+          <div class="card-title"><span class="icon">📈</span> Calorii — 7 zile</div>
+        </div>
+        <div style="height:160px">
+          <canvas id="weekChart" data-values="{{ week_data_json }}"></canvas>
+        </div>
+      </div>
+
+      {# Jurnalul zilei #}
+      <div class="card animate-in" style="animation-delay:0.25s">
+        <div class="card-header">
+          <div class="card-title"><span class="icon">📓</span> Jurnalul de azi</div>
+          <a href="{% url 'journal' %}" class="btn btn-secondary btn-sm">Vezi tot</a>
+        </div>
+
+        {% if meal_groups %}
+          {% for meal_label, entries in meal_groups.items %}
+          <div class="meal-section">
+            <div class="meal-section-header">
+              <span class="meal-dot"></span>
+              {{ meal_label }}
+            </div>
+            {% for log in entries %}
+            <div class="food-entry">
+              <div>
+                <div class="name">{{ log.food.name }}</div>
+                <div class="gram">{{ log.grams }}g</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px">
+                <div style="text-align:right">
+                  <div class="kcal">{{ log.kcal }} kcal</div>
+                  <div style="font-size:11px;color:var(--text-muted)">
+                    P:{{ log.protein_g }}g · C:{{ log.carbs_g }}g · G:{{ log.fat_g }}g
+                  </div>
+                </div>
+                <form method="POST" action="{% url 'log_delete' log.pk %}" style="display:inline">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-danger btn-icon btn-sm"
+                          onclick="return confirm('Stergi aceasta intrare?')" title="Sterge">✕</button>
+                </form>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="empty-state">
+            <div class="empty-icon">🍽️</div>
+            <p>Nu ai adăugat nimic azi.<br>Folosește formularul din stânga!</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>{# end grid #}
+
+</div>{# end page-container #}
+{% endblock %}

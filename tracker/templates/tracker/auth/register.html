@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+{% block title %}Înregistrare — NutriFlow{% endblock %}
+{% block content %}
+<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:2rem">
+  <div style="width:100%;max-width:460px">
+    <div style="text-align:center;margin-bottom:2rem">
+      <div style="font-size:2.5rem;font-weight:900;color:var(--accent);letter-spacing:-1px">
+        ● NutriFlow
+      </div>
+      <p style="color:var(--text-muted);margin-top:8px">Creează-ți contul gratuit</p>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Cont nou</div>
+      </div>
+      <form method="POST">
+        {% csrf_token %}
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="form-group">
+            <label class="form-label">Prenume</label>
+            <input type="text" name="first_name" class="form-control" placeholder="Ion" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Nume</label>
+            <input type="text" name="last_name" class="form-control" placeholder="Popescu" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input type="email" name="email" class="form-control" placeholder="ion@email.ro" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Username</label>
+          <input type="text" name="username" class="form-control" placeholder="ion_popescu" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Parolă</label>
+          <input type="password" name="password1" class="form-control" placeholder="Minim 8 caractere" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Confirmă parola</label>
+          <input type="password" name="password2" class="form-control" placeholder="••••••••" required>
+        </div>
+        {% if form.errors %}
+          {% for field in form %}{% for error in field.errors %}
+            <div class="alert alert-error" style="margin-bottom:8px">✕ {{ error }}</div>
+          {% endfor %}{% endfor %}
+        {% endif %}
+        <button type="submit" class="btn btn-primary" style="width:100%;margin-top:8px">
+          Creează cont →
+        </button>
+      </form>
+      <p style="text-align:center;margin-top:1rem;font-size:13px;color:var(--text-muted)">
+        Ai deja cont?
+        <a href="{% url 'login' %}" style="color:var(--accent);font-weight:600">Autentifică-te</a>
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}

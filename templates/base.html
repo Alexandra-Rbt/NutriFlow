@@ -1,0 +1,79 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}NutriFlow{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'tracker/css/style.css' %}">
+  {% block extra_css %}{% endblock %}
+</head>
+
+{# Tema se aplica din baza de date via context_processor #}
+<body data-theme="{{ current_theme }}">
+
+{% if user.is_authenticated %}
+<nav class="navbar">
+  <a href="{% url 'dashboard' %}" class="navbar-brand">
+    <span class="brand-dot"></span>NutriFlow
+  </a>
+
+  <ul class="nav-links">
+    <li>
+      <a href="{% url 'dashboard' %}" {% if request.resolver_match.url_name == 'dashboard' %}class="active"{% endif %}>
+        📊 Dashboard
+      </a>
+    </li>
+    <li>
+      <a href="{% url 'journal' %}" {% if request.resolver_match.url_name == 'journal' %}class="active"{% endif %}>
+        📓 Jurnal
+      </a>
+    </li>
+    <li>
+      <a href="{% url 'weight' %}" {% if request.resolver_match.url_name == 'weight' %}class="active"{% endif %}>
+        ⚖️ Greutate
+      </a>
+    </li>
+    <li>
+      <a href="{% url 'recipes' %}" {% if request.resolver_match.url_name == 'recipes' %}class="active"{% endif %}>
+        🍳 Rețete
+      </a>
+    </li>
+    <li>
+      <a href="{% url 'foods' %}" {% if request.resolver_match.url_name == 'foods' %}class="active"{% endif %}>
+        🥗 Alimente
+      </a>
+    </li>
+  </ul>
+
+  <div style="display:flex;align-items:center;gap:12px;">
+    <a href="{% url 'settings' %}" class="btn btn-secondary btn-sm"
+       {% if request.resolver_match.url_name == 'settings' %}style="border-color:var(--accent);color:var(--accent)"{% endif %}>
+      ⚙️ Setări
+    </a>
+    <a href="{% url 'logout' %}" class="btn btn-secondary btn-sm">Ieșire</a>
+  </div>
+</nav>
+{% endif %}
+
+{# Mesaje Django #}
+{% if messages %}
+<div class="messages-container">
+  {% for message in messages %}
+    <div class="alert alert-{{ message.tags|default:'success' }}">
+      {% if message.tags == 'success' %}✓{% elif message.tags == 'error' %}✕{% else %}ℹ{% endif %}
+      {{ message }}
+    </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% block content %}{% endblock %}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="{% static 'tracker/js/main.js' %}"></script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

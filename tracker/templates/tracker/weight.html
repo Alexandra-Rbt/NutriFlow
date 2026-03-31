@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+{% block title %}Greutate corporală — NutriFlow{% endblock %}
+{% block content %}
+<div class="page-container">
+  <div class="page-header">
+    <h1>⚖️ Greutate corporală</h1>
+    <p>Urmărește evoluția greutății tale în timp</p>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1.8fr;gap:24px;align-items:start">
+
+    <div class="card animate-in">
+      <div class="card-header">
+        <div class="card-title"><span class="icon">➕</span> Adaugă intrare</div>
+      </div>
+      <form method="POST">
+        {% csrf_token %}
+        <div class="form-group">
+          {{ form.date.label_tag }}
+          {{ form.date }}
+          {% comment %} <label class="form-label">Data</label> {% endcomment %}
+          {% comment %} <input type="date" name="date" class="form-control" value="{{ form.date.value }}"> {% endcomment %}
+        </div>
+        <div class="form-group">
+          <label class="form-label">Greutate (kg)</label>
+          <input type="number" name="weight_kg" class="form-control" placeholder="ex: 75.5" step="0.1" min="20">
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Observații</label>
+          <input type="text" name="notes" class="form-control" placeholder="Optional...">
+        </div>
+        {{form.errors}} abc
+        <button type="submit" class="btn btn-primary" style="width:100%">💾 Salvează</button>
+      </form>
+    </div>
+
+    <div>
+      <div class="card animate-in" style="animation-delay:0.1s;margin-bottom:16px">
+        <div class="card-header">
+          <div class="card-title"><span class="icon">📈</span> Evoluție</div>
+        </div>
+        <div style="height:200px">
+          <canvas id="weightChart" data-values="{{ chart_data_json }}"></canvas>
+        </div>
+      </div>
+
+      <div class="card animate-in" style="animation-delay:0.15s">
+        <div class="card-header">
+          <div class="card-title"><span class="icon">📋</span> Istoric</div>
+        </div>
+        {% if weights %}
+        <table class="data-table">
+          <thead><tr>
+            <th>Data</th><th>Greutate</th><th>Observații</th><th></th>
+          </tr></thead>
+          <tbody>
+            {% for w in weights %}
+            <tr>
+              <td>{{ w.date|date:"d.m.Y" }}</td>
+              <td><strong>{{ w.weight_kg }} kg</strong></td>
+              <td style="color:var(--text-muted)">{{ w.notes|default:"—" }}</td>
+              <td>
+                <form method="POST" action="{% url 'weight_delete' w.pk %}" style="display:inline">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-danger btn-sm btn-icon"
+                          onclick="return confirm('Stergi aceasta intrare?')">✕</button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+          <div class="empty-state"><div class="empty-icon">⚖️</div><p>Nu ai intrări încă.</p></div>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
