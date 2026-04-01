@@ -1,0 +1,152 @@
+{% extends 'base.html' %}
+{% block title %}Alimente — NutriFlow{% endblock %}
+{% block content %}
+<div class="page-container">
+  <div class="page-header">
+    <h1>🥗 Baza de alimente</h1>
+    <p>Toate alimentele disponibile + alimentele tale personalizate</p>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 2fr;gap:24px;align-items:start">
+
+    {# Form adaugare aliment personalizat #}
+    <div class="card animate-in">
+      <div class="card-header">
+        <div class="card-title"><span class="icon">➕</span> Aliment personalizat</div>
+      </div>
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:1rem">
+        Valorile nutriționale sunt per <strong>100g</strong>.
+      </p>
+      <form method="POST" action="{% url 'food_create' %}">
+        {% csrf_token %}
+        <div class="form-group">
+          <label class="form-label">Nume aliment</label>
+          <input type="text" name="name" class="form-control" placeholder="ex: Tort de ciocolată" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Categorie</label>
+          <select name="category" class="form-control form-select">
+            <option value="protein">Proteine</option>
+            <option value="grain">Cereale & Paste</option>
+            <option value="vegetable">Legume</option>
+            <option value="fruit">Fructe</option>
+            <option value="dairy">Lactate</option>
+            <option value="fat">Grăsimi & Uleiuri</option>
+            <option value="snack">Snacks</option>
+            <option value="drink">Băuturi</option>
+            <option value="other" selected>Altele</option>
+          </select>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="form-group">
+            <label class="form-label">Calorii (kcal)</label>
+            <input type="number" name="kcal_per_100g" class="form-control"
+                   placeholder="0" step="0.1" min="0" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Proteine (g)</label>
+            <input type="number" name="protein_per_100g" class="form-control"
+                   placeholder="0" step="0.1" min="0" value="0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Carbohidrați (g)</label>
+            <input type="number" name="carbs_per_100g" class="form-control"
+                   placeholder="0" step="0.1" min="0" value="0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Grăsimi (g)</label>
+            <input type="number" name="fat_per_100g" class="form-control"
+                   placeholder="0" step="0.1" min="0" value="0">
+          </div>
+          <div class="form-group" style="grid-column:1/-1">
+            <label class="form-label">Fibre (g)</label>
+            <input type="number" name="fiber_per_100g" class="form-control"
+                   placeholder="0" step="0.1" min="0" value="0">
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary" style="width:100%;margin-top:4px">
+          ➕ Adaugă aliment
+        </button>
+      </form>
+    </div>
+
+    {# Lista alimente #}
+    <div>
+      {% if custom_foods %}
+      <div class="card animate-in" style="margin-bottom:20px">
+        <div class="card-header">
+          <div class="card-title"><span class="icon">⭐</span> Alimentele tale ({{ custom_foods.count }})</div>
+        </div>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Aliment</th>
+              <th>Kcal/100g</th>
+              <th>Prot.</th>
+              <th>Carbo.</th>
+              <th>Grăs.</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for food in custom_foods %}
+            <tr>
+              <td><strong>{{ food.name }}</strong></td>
+              <td style="color:var(--accent);font-weight:600">{{ food.kcal_per_100g }}</td>
+              <td style="color:var(--color-protein)">{{ food.protein_per_100g }}g</td>
+              <td style="color:var(--color-carbs)">{{ food.carbs_per_100g }}g</td>
+              <td style="color:var(--color-fat)">{{ food.fat_per_100g }}g</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
+
+      <div class="card animate-in" style="animation-delay:0.1s">
+        <div class="card-header">
+          <div class="card-title"><span class="icon">🗃️</span> Baza de date ({{ all_foods.count }} alimente)</div>
+          <input type="text" id="food-search" class="form-control"
+                 placeholder="Caută aliment..." style="max-width:200px;padding:6px 12px;font-size:13px">
+        </div>
+        <table class="data-table" id="foods-table">
+          <thead>
+            <tr>
+              <th>Aliment</th>
+              <th>Categorie</th>
+              <th>Kcal/100g</th>
+              <th>Prot.</th>
+              <th>Carbo.</th>
+              <th>Grăs.</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for food in all_foods %}
+            <tr>
+              <td><strong>{{ food.name }}</strong></td>
+              <td><span class="badge badge-accent" style="font-size:10px">{{ food.get_category_display }}</span></td>
+              <td style="color:var(--accent);font-weight:600">{{ food.kcal_per_100g }}</td>
+              <td style="color:var(--color-protein)">{{ food.protein_per_100g }}g</td>
+              <td style="color:var(--color-carbs)">{{ food.carbs_per_100g }}g</td>
+              <td style="color:var(--color-fat)">{{ food.fat_per_100g }}g</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+{% block extra_js %}
+<script>
+// Cautare live in tabel
+document.getElementById('food-search').addEventListener('input', function() {
+  const q = this.value.toLowerCase();
+  document.querySelectorAll('#foods-table tbody tr').forEach(function(row) {
+    row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+  });
+});
+</script>
+{% endblock %}
+{% endblock %}
