@@ -1,4 +1,3 @@
-from django.db import IntegrityError
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.decorators import login_required
@@ -214,7 +213,6 @@ def nutrition_calc(request):
 # ─────────────────────────────────────────
 @login_required
 def weight_view(request):
-    form = BodyWeightForm(initial={'date': timezone.now().strftime('%Y-%m-%d')})
     if request.method == 'POST':
         form = BodyWeightForm(request.POST)
         if form.is_valid():
@@ -223,12 +221,11 @@ def weight_view(request):
             try:
                 entry.save()
                 messages.success(request, 'Greutatea a fost salvata.')
-            except IntegrityError as e:
-                # messages.error(request, e)
+            except Exception:
                 messages.error(request, 'Ai deja o intrare pentru aceasta data.')
         else:
             messages.error(request, 'Date invalide.')
-        # return redirect('weight')
+        return redirect('weight')
 
     weights = BodyWeight.objects.filter(user=request.user)[:30]
     chart_data = [
@@ -237,7 +234,7 @@ def weight_view(request):
     ]
     return render(request, 'tracker/weight.html', {
         'weights':        weights,
-        'form': form,
+        'form':           BodyWeightForm(initial={'date': date.today()}),
         'chart_data_json': json.dumps(chart_data),
     })
 
@@ -409,3 +406,67 @@ def food_create(request):
         else:
             messages.error(request, 'Date invalide.')
     return redirect('foods')
+
+
+# ─────────────────────────────────────────
+#  OPEN FOOD FACTS — cautare si import
+# ─────────────────────────────────────────
+@login_required
+def off_search(request):
+    """
+    AJAX: cauta alimente in Open Food Facts dupa text.
+    GET ?q=chicken&page=1
+    Returneaza JSON cu lista de produse.
+    """
+    query = request.GET.get('q', '').strip()
+    page  = int(request.GET.get('page', 1))
+
+    if len(query) < 2:
+        return JsonResponse({'results': [], 'query': query})
+
+    from .openfoodfacts_service import search_foods
+    results = search_foods(query, page=page, page_size=15)
+    return JsonResponse({'results': results, 'query': query, 'page': page})
+
+
+@login_required
+def off_barcode(request):
+    """
+    AJAX: cauta un produs dupa codul de bare.
+    GET ?code=3017620422003
+    """
+    code = request.GET.get('code', '').strip()
+    if not code:
+        return JsonResponse({'success': False, 'error': 'Cod lipsa'})
+
+    from .openfoodfacts_service import get_product_by_barcode
+    product = get_product_by_barcode(code)
+    if not product:
+        return JsonResponse({'success': False, 'error': 'Produs negasit'})
+
+    return JsonResponse({'success': True, 'product': product})
+
+
+@login_required
+def off_import(request):
+    """
+    POST: importa un produs din OFF in baza de date locala.
+    Body JSON: { off_code, name, category, kcal, protein, carbs, fat, fiber }
+    """
+    if request.method != 'POST':
+        return JsonResponse({'success': False}, status=405)
+
+    data = json.loads(request.body)
+    from .openfoodfacts_service import import_product_to_db
+    food, created = import_product_to_db(data, user=request.user)
+
+    return JsonResponse({
+        'success': True,
+        'food_id': food.pk,
+        'food_name': food.name,
+        'created': created,
+        'kcal': float(food.kcal_per_100g),
+        'protein': float(food.protein_per_100g),
+        'carbs': float(food.carbs_per_100g),
+        'fat': float(food.fat_per_100g),
+    })

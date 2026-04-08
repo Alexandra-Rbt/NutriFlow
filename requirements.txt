@@ -6,3 +6,4 @@ mysqlclient==2.2.8
 pillow==12.1.1
 python-dotenv==1.2.2
 sqlparse==0.5.5
+openfoodfacts>=2.0.0

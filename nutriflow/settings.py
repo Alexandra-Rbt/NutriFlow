@@ -6,12 +6,12 @@ load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# --- SECURITATE ---
+# Securitate
 SECRET_KEY = os.getenv('SECRET_KEY')
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
 ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
-# --- APLICAȚII ---
+# Aplicatii
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -55,7 +55,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'nutriflow.wsgi.application'
 
-# --- BAZA DE DATE ---
+# Baza de date
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
@@ -71,7 +71,7 @@ DATABASES = {
     }
 }
 
-# --- VALIDARE PAROLE ---
+# Validare
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},

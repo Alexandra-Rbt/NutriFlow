@@ -4,9 +4,8 @@ from django.contrib.auth.models import User
 from .models import UserProfile, FoodLog, BodyWeight, Recipe, RecipeIngredient, Food
 
 
-# ─────────────────────────────────────────
+
 #  AUTENTIFICARE
-# ─────────────────────────────────────────
 class RegisterForm(UserCreationForm):
     email      = forms.EmailField(required=True, label='Email')
     first_name = forms.CharField(max_length=50, required=True, label='Prenume')
