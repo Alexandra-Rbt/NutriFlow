@@ -164,3 +164,16 @@
   </div>
 </div>
 {% endblock %}
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  new NutriAutocomplete({
+    inputId:   'food-search-input',
+    hiddenId:  'food-id-hidden',
+    gramsId:   'id_grams',
+    previewId: 'nutrition-preview',
+  });
+});
+</script>
+{% endblock %}
+{% endblock %}
