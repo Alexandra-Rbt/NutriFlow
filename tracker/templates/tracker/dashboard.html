@@ -125,12 +125,10 @@
           {% csrf_token %}
           <div class="form-group">
             <label class="form-label">Aliment</label>
-            <select name="food" id="id_food" class="form-control form-select">
-              <option value="">— Alege aliment —</option>
-              {% for food in log_form.food.field.queryset %}
-                <option value="{{ food.pk }}">{{ food.name }}</option>
-              {% endfor %}
-            </select>
+            <input type="text" id="food-search-input" class="form-control nf-ac-input"
+                   placeholder="Caută aliment... (ex: pui, orez, banană)"
+                   autocomplete="off">
+            <input type="hidden" name="food" id="food-id-hidden">
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
             <div class="form-group">
@@ -238,4 +236,16 @@
   </div>{# end grid #}
 
 </div>{# end page-container #}
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  new NutriAutocomplete({
+    inputId:   'food-search-input',
+    hiddenId:  'food-id-hidden',
+    gramsId:   'id_grams',
+    previewId: 'nutrition-preview',
+  });
+});
+</script>
+{% endblock %}
 {% endblock %}
