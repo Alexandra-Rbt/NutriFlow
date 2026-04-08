@@ -470,3 +470,37 @@ def off_import(request):
         'carbs': float(food.carbs_per_100g),
         'fat': float(food.fat_per_100g),
     })
+
+
+# ─────────────────────────────────────────
+#  AJAX — autocomplete alimente
+# ─────────────────────────────────────────
+@login_required
+def food_autocomplete(request):
+    """
+    GET ?q=pui
+    Returneaza max 10 alimente care contin termenul cautat.
+    """
+    q = request.GET.get('q', '').strip()
+    if len(q) < 2:
+        return JsonResponse({'results': []})
+
+    from django.db.models import Q
+    foods = Food.objects.filter(
+        Q(name__icontains=q)
+    ).order_by('name')[:10]
+
+    results = [
+        {
+            'id':       f.pk,
+            'name':     f.name,
+            'kcal':     float(f.kcal_per_100g),
+            'protein':  float(f.protein_per_100g),
+            'carbs':    float(f.carbs_per_100g),
+            'fat':      float(f.fat_per_100g),
+            'category': f.get_category_display(),
+            'off':      bool(f.off_code),
+        }
+        for f in foods
+    ]
+    return JsonResponse({'results': results})
