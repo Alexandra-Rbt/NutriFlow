@@ -16,6 +16,7 @@
 
 {% if user.is_authenticated %}
 <nav class="navbar">
+  <div class="navbar-inner"> <a href="{% url 'dashboard' %}" class="navbar-brand">...</a>
   <a href="{% url 'dashboard' %}" class="navbar-brand">
     <span class="brand-dot"></span>NutriFlow
   </a>
@@ -70,7 +71,9 @@
 </div>
 {% endif %}
 
+<div class="main-app-container">
 {% block content %}{% endblock %}
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="{% static 'tracker/js/autocomplete.js' %}"></script>

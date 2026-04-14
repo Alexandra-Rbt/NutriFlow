@@ -164,12 +164,34 @@ def log_delete(request, pk):
 
 @login_required
 def journal_view(request):
-    """Jurnal complet cu filtrare dupa data."""
+    """Jurnal complet cu calendar saptamanal si filtrare dupa data."""
     filter_date = request.GET.get('date', str(date.today()))
     try:
         filter_date = date.fromisoformat(filter_date)
     except ValueError:
         filter_date = date.today()
+
+    # Calendar saptamanal — luni pana duminica din saptamana curenta
+    today = date.today()
+    # Gaseste lunea saptamanii pentru data selectata
+    week_start = filter_date - timedelta(days=filter_date.weekday())
+    week_days = [week_start + timedelta(days=i) for i in range(7)]
+
+    # Pentru fiecare zi din saptamana, verifica daca are intrari
+    days_with_logs = set(
+        FoodLog.objects.filter(
+            user=request.user,
+            date__in=week_days
+        ).values_list('date', flat=True).distinct()
+    )
+
+    # Calorii per zi din saptamana (pentru inelele de progres)
+    days_kcal = {}
+    for d in week_days:
+        kcal = FoodLog.objects.filter(
+            user=request.user, date=d
+        ).aggregate(s=Sum('kcal'))['s'] or 0
+        days_kcal[d] = float(kcal)
 
     logs = FoodLog.objects.filter(
         user=request.user, date=filter_date
@@ -179,12 +201,48 @@ def journal_view(request):
         kcal=Sum('kcal'), protein=Sum('protein_g'),
         carbs=Sum('carbs_g'), fat=Sum('fat_g'),
     )
+    totals = {k: round(float(v or 0), 1) for k, v in totals.items()}
+
+    # Grupare pe mese
+    meal_groups = {}
+    for meal_key, meal_label in FoodLog.MEAL_CHOICES:
+        meal_logs = logs.filter(meal_type=meal_key)
+        meal_kcal = meal_logs.aggregate(s=Sum('kcal'))['s'] or 0
+        if meal_logs.exists():
+            meal_groups[meal_key] = {
+                'label': meal_label,
+                'logs':  meal_logs,
+                'kcal':  round(float(meal_kcal), 1),
+            }
+
+    profile = get_or_create_profile(request.user)
+
+    # Ziua precedenta si urmatoare pentru navigare
+    prev_date = filter_date - timedelta(days=1)
+    next_date = filter_date + timedelta(days=1)
+
+    def pct(val, target):
+        return min(round(float(val) / float(target) * 100) if target else 0, 100)
 
     return render(request, 'tracker/journal.html', {
-        'logs':        logs,
-        'filter_date': filter_date,
-        'totals':      {k: round(float(v or 0), 1) for k, v in totals.items()},
-        'form':        FoodLogForm(initial={'date': filter_date}),
+        'logs':           logs,
+        'filter_date':    filter_date,
+        'today':          today,
+        'totals':         totals,
+        'meal_groups':    meal_groups,
+        'form':           FoodLogForm(initial={'date': filter_date, 'meal_type': request.GET.get('meal', 'lunch')}),
+        'profile':        profile,
+        'week_days':      week_days,
+        'week_start':     week_start,
+        'days_with_logs': days_with_logs,
+        'days_kcal':      days_kcal,
+        'prev_date':      prev_date,
+        'next_date':      next_date,
+        'selected_meal':  request.GET.get('meal', ''),
+        'pct_consumed':   pct(totals['kcal'], profile.daily_kcal_target),
+        'pct_protein':    pct(totals['protein'], profile.protein_target_g),
+        'pct_carbs':      pct(totals['carbs'], profile.carbs_target_g),
+        'pct_fat':        pct(totals['fat'], profile.fat_target_g),
     })
 
 
@@ -470,7 +528,6 @@ def off_import(request):
         'carbs': float(food.carbs_per_100g),
         'fat': float(food.fat_per_100g),
     })
-
 
 # ─────────────────────────────────────────
 #  AJAX — autocomplete alimente
