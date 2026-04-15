@@ -82,21 +82,99 @@ class BodyWeightForm(forms.ModelForm):
 
 class RecipeForm(forms.ModelForm):
     class Meta:
-        model  = Recipe
-        fields = ['name', 'description', 'servings', 'image']
+        model = Recipe
+        fields = [
+            'name',
+            'description',
+            'instructions',
+            'servings',
+            'prep_time_minutes',
+            'image',
+        ]
         widgets = {
-            'description': forms.Textarea(attrs={'rows': 3}),
+            'name': forms.TextInput(attrs={
+                'class': 'nf-input',
+                'placeholder': 'Ex: Bowl proteic cu pui și orez',
+            }),
+            'description': forms.Textarea(attrs={
+                'class': 'nf-input',
+                'placeholder': 'Scurtă descriere a rețetei...',
+                'rows': 3,
+            }),
+            'instructions': forms.Textarea(attrs={
+                'class': 'nf-input',
+                'placeholder': 'Scrie pașii de preparare...',
+                'rows': 8,
+            }),
+            'servings': forms.NumberInput(attrs={
+                'class': 'nf-input',
+                'min': 1,
+                'placeholder': '1',
+            }),
+            'prep_time_minutes': forms.NumberInput(attrs={
+                'class': 'nf-input',
+                'min': 0,
+                'placeholder': 'Ex: 25',
+            }),
+            'image': forms.ClearableFileInput(attrs={
+                'class': 'nf-input',
+                'accept': 'image/*',
+            }),
         }
+        labels = {
+            'name': 'Nume rețetă',
+            'description': 'Descriere',
+            'instructions': 'Instrucțiuni',
+            'servings': 'Număr porții',
+            'prep_time_minutes': 'Timp preparare (minute)',
+            'image': 'Imagine',
+        }
+
+    def clean_servings(self):
+        servings = self.cleaned_data.get('servings')
+        if servings is not None and servings < 1:
+            raise forms.ValidationError('Numărul de porții trebuie să fie cel puțin 1.')
+        return servings
+
+    def clean_prep_time_minutes(self):
+        prep_time = self.cleaned_data.get('prep_time_minutes')
+        if prep_time is not None and prep_time < 0:
+            raise forms.ValidationError('Timpul de preparare nu poate fi negativ.')
+        return prep_time
+
 
 class RecipeIngredientForm(forms.ModelForm):
     class Meta:
         model = RecipeIngredient
         fields = ['name', 'grams']
-        labels = {'name': 'Ingredient', 'grams': 'Cantitate (g)'}
         widgets = {
-            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: Făină'}),
-            'grams': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Ex: 100'}),
+            'name': forms.TextInput(attrs={
+                'class': 'nf-input',
+                'placeholder': 'Ex: Piept de pui',
+            }),
+            'grams': forms.NumberInput(attrs={
+                'class': 'nf-input',
+                'min': 0,
+                'step': '0.1',
+                'placeholder': 'Ex: 150',
+            }),
         }
+        labels = {
+            'name': 'Ingredient',
+            'grams': 'Grame',
+        }
+
+    def clean_name(self):
+        name = self.cleaned_data.get('name', '').strip()
+        if not name:
+            raise forms.ValidationError('Completează numele ingredientului.')
+        return name
+
+    def clean_grams(self):
+        grams = self.cleaned_data.get('grams')
+        if grams is None or grams <= 0:
+            raise forms.ValidationError('Gramajul trebuie să fie mai mare decât 0.')
+        return grams
 
 
 
