@@ -6,6 +6,7 @@ from .models import UserProfile, FoodLog, BodyWeight, Recipe, RecipeIngredient, 
 
 
 #  AUTENTIFICARE
+
 class RegisterForm(UserCreationForm):
     email      = forms.EmailField(required=True, label='Email')
     first_name = forms.CharField(max_length=50, required=True, label='Prenume')
@@ -20,9 +21,8 @@ class LoginForm(AuthenticationForm):
     pass
 
 
-# ─────────────────────────────────────────
 #  PROFIL & SETARI
-# ─────────────────────────────────────────
+
 class UserProfileForm(forms.ModelForm):
     class Meta:
         model  = UserProfile
@@ -43,9 +43,8 @@ class ThemeForm(forms.ModelForm):
         fields = ['theme']
 
 
-# ─────────────────────────────────────────
 #  JURNAL ALIMENTAR
-# ─────────────────────────────────────────
+
 class FoodLogForm(forms.ModelForm):
     class Meta:
         model  = FoodLog
@@ -67,9 +66,7 @@ class FoodLogForm(forms.ModelForm):
         self.fields['food'].empty_label = '— Alege aliment —'
 
 
-# ─────────────────────────────────────────
 #  GREUTATE
-# ─────────────────────────────────────────
 class BodyWeightForm(forms.ModelForm):
     class Meta:
         model  = BodyWeight
@@ -81,9 +78,8 @@ class BodyWeightForm(forms.ModelForm):
         }
 
 
-# ─────────────────────────────────────────
 #  RETETE
-# ─────────────────────────────────────────
+
 class RecipeForm(forms.ModelForm):
     class Meta:
         model  = Recipe
@@ -92,24 +88,20 @@ class RecipeForm(forms.ModelForm):
             'description': forms.Textarea(attrs={'rows': 3}),
         }
 
-
 class RecipeIngredientForm(forms.ModelForm):
     class Meta:
-        model  = RecipeIngredient
-        fields = ['food', 'grams']
+        model = RecipeIngredient
+        fields = ['name', 'grams']
+        labels = {'name': 'Ingredient', 'grams': 'Cantitate (g)'}
         widgets = {
-            'grams': forms.NumberInput(attrs={'step': '1', 'min': '1', 'placeholder': 'grame'}),
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: Făină'}),
+            'grams': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Ex: 100'}),
         }
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields['food'].queryset    = Food.objects.all().order_by('name')
-        self.fields['food'].empty_label = '— Alege ingredient —'
 
 
-# ─────────────────────────────────────────
 #  ALIMENT PERSONALIZAT
-# ─────────────────────────────────────────
+
 class CustomFoodForm(forms.ModelForm):
     class Meta:
         model  = Food

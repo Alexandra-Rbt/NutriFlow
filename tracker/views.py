@@ -3,17 +3,28 @@ from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import JsonResponse
-from django.db.models import Sum
+from django.db.models import Count,Sum
 from django.utils import timezone
 from datetime import timedelta, date
 import json
+
 
 from .models import UserProfile, Food, FoodLog, BodyWeight, Recipe, RecipeIngredient
 from .forms import (
     RegisterForm, LoginForm, UserProfileForm, ThemeForm,
     FoodLogForm, BodyWeightForm, RecipeForm, RecipeIngredientForm, CustomFoodForm
 )
+from django.forms import inlineformset_factory
 
+
+
+RecipeIngredientFormSet = inlineformset_factory(
+    Recipe,
+    RecipeIngredient,
+    fields=('name', 'grams'),
+    extra=1,
+    can_delete=True
+)
 
 # ─────────────────────────────────────────
 #  HELPER — obtine sau creeaza profilul
@@ -63,9 +74,7 @@ def logout_view(request):
     return redirect('login')
 
 
-# ─────────────────────────────────────────
 #  DASHBOARD
-# ─────────────────────────────────────────
 @login_required
 def dashboard_view(request):
     profile = get_or_create_profile(request.user)
@@ -128,9 +137,7 @@ def dashboard_view(request):
     return render(request, 'tracker/dashboard.html', context)
 
 
-# ─────────────────────────────────────────
 #  JURNAL ALIMENTAR
-# ─────────────────────────────────────────
 @login_required
 def log_add(request):
     if request.method == 'POST':
@@ -246,9 +253,7 @@ def journal_view(request):
     })
 
 
-# ─────────────────────────────────────────
 #  AJAX — calcul nutritional live
-# ─────────────────────────────────────────
 @login_required
 def nutrition_calc(request):
     """
@@ -266,9 +271,8 @@ def nutrition_calc(request):
         return JsonResponse({'success': False, 'error': 'Date invalide'})
 
 
-# ─────────────────────────────────────────
+
 #  GREUTATE CORPORALA
-# ─────────────────────────────────────────
 @login_required
 def weight_view(request):
     if request.method == 'POST':
@@ -304,47 +308,75 @@ def weight_delete(request, pk):
     messages.success(request, 'Intrare stearsa.')
     return redirect('weight')
 
-
-# ─────────────────────────────────────────
 #  RETETE
-# ─────────────────────────────────────────
+
 @login_required
 def recipes_view(request):
-    recipes = Recipe.objects.filter(user=request.user).prefetch_related('ingredients__food')
-    return render(request, 'tracker/recipes.html', {'recipes': recipes})
+    recipes = (
+        Recipe.objects.filter(user=request.user)
+        .prefetch_related('ingredients__food')
+        .annotate(ingredient_count=Count('ingredients'))
+    )
 
+    totals = recipes.aggregate(
+        total_kcal=Sum('total_kcal'),
+        total_protein=Sum('total_protein'),
+        total_carbs=Sum('total_carbs'),
+        total_fat=Sum('total_fat'),
+    )
 
-@login_required
-def recipe_create(request):
-    if request.method == 'POST':
-        form = RecipeForm(request.POST, request.FILES)
-        if form.is_valid():
-            recipe      = form.save(commit=False)
-            recipe.user = request.user
-            recipe.save()
-            messages.success(request, f'Reteta "{recipe.name}" creata. Adauga ingrediente.')
-            return redirect('recipe_edit', pk=recipe.pk)
-    else:
-        form = RecipeForm()
-    return render(request, 'tracker/recipe_form.html', {'form': form, 'title': 'Reteta noua'})
-
+    context = {
+        'recipes': recipes,
+        'recipe_count': recipes.count(),
+        'total_kcal': float(totals['total_kcal'] or 0),
+        'total_protein': float(totals['total_protein'] or 0),
+        'total_carbs': float(totals['total_carbs'] or 0),
+        'total_fat': float(totals['total_fat'] or 0),
+    }
+    return render(request, 'tracker/recipes.html', context)
 
 @login_required
 def recipe_edit(request, pk):
     recipe = get_object_or_404(Recipe, pk=pk, user=request.user)
+
     if request.method == 'POST':
         form = RecipeForm(request.POST, request.FILES, instance=recipe)
-        if form.is_valid():
-            form.save()
-            messages.success(request, 'Reteta actualizata.')
+        formset = RecipeIngredientFormSet(
+            request.POST,
+            instance=recipe,
+            prefix='ingredients'
+        )
+
+        if form.is_valid() and formset.is_valid():
+            recipe = form.save()
+
+            instances = formset.save(commit=False)
+
+            for obj in formset.deleted_objects:
+                obj.delete()
+
+            for ing in instances:
+                ing.recipe = recipe
+                if not ing.name and ing.food:
+                    ing.name = ing.food.name
+                ing.save()
+
+            recipe.recalculate_totals()
+            messages.success(request, 'Rețeta a fost actualizată.')
+            return redirect('recipe_detail', pk=recipe.pk)
+        else:
+            messages.error(request, 'Te rog verifică datele din formular.')
     else:
         form = RecipeForm(instance=recipe)
+        formset = RecipeIngredientFormSet(instance=recipe, prefix='ingredients')
 
-    ing_form = RecipeIngredientForm()
-    return render(request, 'tracker/recipe_edit.html', {
-        'recipe':   recipe,
-        'form':     form,
-        'ing_form': ing_form,
+    return render(request, 'tracker/recipe_form.html', {
+        'form': form,
+        'formset': formset,
+        'recipe': recipe,
+        'page_title': 'Editează rețeta',
+        'submit_label': 'Salvează modificările',
+        'is_edit': True,
     })
 
 
@@ -373,16 +405,75 @@ def recipe_delete_ingredient(request, pk, ing_pk):
 
 
 @login_required
+def recipe_list(request):
+    # Afișează toate rețetele utilizatorului
+    recipes = Recipe.objects.filter(user=request.user)
+    return render(request, 'tracker/recipes.html', {'recipes': recipes})
+
+@login_required
+def recipe_detail(request, pk):
+    recipe = get_object_or_404(
+        Recipe.objects.prefetch_related('ingredients__food'),
+        pk=pk,
+        user=request.user
+    )
+    return render(request, 'tracker/recipe_detail.html', {'recipe': recipe})
+
+@login_required
 def recipe_delete(request, pk):
     recipe = get_object_or_404(Recipe, pk=pk, user=request.user)
-    recipe.delete()
-    messages.success(request, f'Reteta "{recipe.name}" stearsa.')
-    return redirect('recipes')
+
+    if request.method == 'POST':
+        recipe_name = recipe.name
+        recipe.delete()
+        messages.success(request, f'Rețeta "{recipe_name}" a fost ștearsă.')
+        return redirect('recipes')
+
+    return redirect('recipe_detail', pk=pk)
+
+@login_required
+def recipe_create(request):
+    if request.method == 'POST':
+        form = RecipeForm(request.POST, request.FILES)
+        formset = RecipeIngredientFormSet(request.POST, prefix='ingredients')
+
+        if form.is_valid() and formset.is_valid():
+            recipe = form.save(commit=False)
+            recipe.user = request.user
+            recipe.save()
+
+            formset.instance = recipe
+            ingredients = formset.save(commit=False)
+
+            for obj in formset.deleted_objects:
+                obj.delete()
+
+            for ing in ingredients:
+                ing.recipe = recipe
+                if not ing.name and ing.food:
+                    ing.name = ing.food.name
+                ing.save()
+
+            recipe.recalculate_totals()
+            messages.success(request, 'Rețetă creată cu succes!')
+            return redirect('recipe_detail', pk=recipe.pk)
+        else:
+            messages.error(request, 'Te rog verifică datele din formular.')
+    else:
+        form = RecipeForm()
+        formset = RecipeIngredientFormSet(prefix='ingredients')
+
+    return render(request, 'tracker/recipe_form.html', {
+        'form': form,
+        'formset': formset,
+        'page_title': 'Adaugă rețetă',
+        'submit_label': 'Salvează rețeta',
+        'is_edit': False,
+    })
 
 
-# ─────────────────────────────────────────
-#  SETARI (inclusiv schimbare tema)
-# ─────────────────────────────────────────
+
+#  Setari (inclusiv schimbare tema)
 @login_required
 def settings_view(request):
     profile = get_or_create_profile(request.user)
@@ -420,9 +511,7 @@ def settings_view(request):
     })
 
 
-# ─────────────────────────────────────────
 #  AJAX — schimbare tema rapida
-# ─────────────────────────────────────────
 @login_required
 def set_theme_ajax(request):
     if request.method == 'POST':
@@ -437,9 +526,7 @@ def set_theme_ajax(request):
     return JsonResponse({'success': False}, status=400)
 
 
-# ─────────────────────────────────────────
 #  ALIMENTE PERSONALIZATE
-# ─────────────────────────────────────────
 @login_required
 def foods_view(request):
     custom_foods = Food.objects.filter(created_by=request.user, is_custom=True)

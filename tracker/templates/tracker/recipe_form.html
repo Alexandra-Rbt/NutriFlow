@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+{% block title %}{{ page_title }} — NutriFlow{% endblock %}
+
+{% block content %}
+<div class="recipe-form-page">
+  <section class="nf-card recipe-form-card">
+    <div class="recipe-form-header">
+      <div>
+        <p class="nf-eyebrow">Editor rețetă</p>
+        <h1>{{ page_title }}</h1>
+        <p>Adaugă informațiile de bază și ingredientele rețetei tale.</p>
+      </div>
+      <a href="{% url 'recipes' %}" class="btn btn-secondary">Înapoi</a>
+    </div>
+
+    <form method="post" enctype="multipart/form-data" novalidate>
+      {% csrf_token %}
+
+      <div class="recipe-main-fields">
+        {{ form.as_p }}
+      </div>
+
+      <div class="ingredients-section">
+        <div class="ingredients-header">
+          <h2>Ingrediente</h2>
+          <button type="button" id="addIngredientBtn" class="btn btn-secondary btn-sm">+ Adaugă ingredient</button>
+        </div>
+
+        {{ formset.management_form }}
+
+        {% if formset.non_form_errors %}
+          <div class="form-errors">
+            {{ formset.non_form_errors }}
+          </div>
+        {% endif %}
+
+        <div id="ingredientForms" class="ingredient-forms">
+          {% for ing_form in formset %}
+            <div class="ingredient-row nf-card">
+              {% for hidden in ing_form.hidden_fields %}
+                {{ hidden }}
+              {% endfor %}
+
+              <div class="ingredient-row-grid">
+                <div class="field-group">
+                  <label for="{{ ing_form.name.id_for_label }}">Ingredient</label>
+                  {{ ing_form.name }}
+                  {% if ing_form.name.errors %}
+                    <div class="field-error">{{ ing_form.name.errors }}</div>
+                  {% endif %}
+                </div>
+
+                <div class="field-group">
+                  <label for="{{ ing_form.grams.id_for_label }}">Grame</label>
+                  {{ ing_form.grams }}
+                  {% if ing_form.grams.errors %}
+                    <div class="field-error">{{ ing_form.grams.errors }}</div>
+                  {% endif %}
+                </div>
+
+                <div class="field-group delete-group">
+                  {% if ing_form.DELETE %}
+                    <label>Ștergere</label>
+                    <div class="delete-checkbox">{{ ing_form.DELETE }} <span>Marchează pentru ștergere</span></div>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+
+        <template id="emptyIngredientForm">
+          <div class="ingredient-row nf-card">
+            <div class="ingredient-row-grid">
+              <div class="field-group">
+                <label for="id_ingredients-__prefix__-name">Ingredient</label>
+                {{ formset.empty_form.name }}
+              </div>
+
+              <div class="field-group">
+                <label for="id_ingredients-__prefix__-grams">Grame</label>
+                {{ formset.empty_form.grams }}
+              </div>
+
+              <div class="field-group delete-group">
+                <label>Ștergere</label>
+                <div class="delete-checkbox">{{ formset.empty_form.DELETE }} <span>Marchează pentru ștergere</span></div>
+              </div>
+            </div>
+          </div>
+        </template>
+      </div>
+
+      <div class="recipe-form-actions">
+        <button type="submit" class="btn btn-primary">{{ submit_label }}</button>
+      </div>
+    </form>
+  </section>
+</div>
+
+<script>
+  (function () {
+    const addBtn = document.getElementById('addIngredientBtn');
+    const formsContainer = document.getElementById('ingredientForms');
+    const totalForms = document.getElementById('id_ingredients-TOTAL_FORMS');
+    const template = document.getElementById('emptyIngredientForm');
+
+    if (!addBtn || !formsContainer || !totalForms || !template) return;
+
+    addBtn.addEventListener('click', function () {
+      const formIndex = parseInt(totalForms.value, 10);
+      const html = template.innerHTML.replace(/__prefix__/g, formIndex);
+      formsContainer.insertAdjacentHTML('beforeend', html);
+      totalForms.value = formIndex + 1;
+    });
+  })();
+</script>
+{% endblock %}

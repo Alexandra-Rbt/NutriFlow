@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+{% block title %}{{ recipe.name }} — NutriFlow{% endblock %}
+
+{% block content %}
+<div class="recipe-detail-page">
+  <section class="nf-card recipe-detail-hero">
+    <div class="recipe-detail-media">
+      {% if recipe.image %}
+        <img src="{{ recipe.image.url }}" alt="{{ recipe.name }}" width="1200" height="800" loading="lazy">
+      {% else %}
+        <div class="recipe-card-placeholder recipe-detail-placeholder">🍽️</div>
+      {% endif %}
+    </div>
+
+    <div class="recipe-detail-content">
+      <p class="nf-eyebrow">Detalii rețetă</p>
+      <h1>{{ recipe.name }}</h1>
+      {% if recipe.description %}
+        <p class="recipe-detail-description">{{ recipe.description }}</p>
+      {% endif %}
+
+      <div class="recipe-detail-metrics">
+        <div class="metric-box">
+          <span>Kcal total</span>
+          <strong>{{ recipe.total_kcal|floatformat:1 }}</strong>
+        </div>
+        <div class="metric-box">
+          <span>Kcal/porție</span>
+          <strong>{{ recipe.kcal_per_serving|floatformat:1 }}</strong>
+        </div>
+        <div class="metric-box">
+          <span>Proteine</span>
+          <strong>{{ recipe.total_protein|floatformat:1 }}g</strong>
+        </div>
+        <div class="metric-box">
+          <span>Carbs</span>
+          <strong>{{ recipe.total_carbs|floatformat:1 }}g</strong>
+        </div>
+        <div class="metric-box">
+          <span>Grăsimi</span>
+          <strong>{{ recipe.total_fat|floatformat:1 }}g</strong>
+        </div>
+        <div class="metric-box">
+          <span>Porții</span>
+          <strong>{{ recipe.servings }}</strong>
+        </div>
+      </div>
+
+      <div class="recipe-actions">
+        <a href="{% url 'recipe_edit' recipe.pk %}" class="btn btn-primary">Editează</a>
+        <a href="{% url 'recipes' %}" class="btn btn-secondary">Înapoi</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="recipe-detail-grid">
+    <article class="nf-card">
+      <h2>Ingrediente</h2>
+      <ul class="ingredient-list">
+        {% for ing in recipe.ingredients.all %}
+          <li>
+            <span>{{ ing.name|default:ing.food.name }}</span>
+            <strong>{{ ing.grams }} g</strong>
+          </li>
+        {% empty %}
+          <li>Nu există ingrediente salvate.</li>
+        {% endfor %}
+      </ul>
+    </article>
+
+    <article class="nf-card">
+      <h2>Instrucțiuni</h2>
+      <div class="recipe-instructions">
+        {% if recipe.instructions %}
+          {{ recipe.instructions|linebreaks }}
+        {% else %}
+          <p>Nu ai adăugat încă instrucțiuni pentru această rețetă.</p>
+        {% endif %}
+      </div>
+    </article>
+  </section>
+</div>
+{% endblock %}

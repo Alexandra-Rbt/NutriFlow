@@ -165,61 +165,77 @@ class BodyWeight(models.Model):
         return f'{self.user.username} — {self.weight_kg}kg ({self.date})'
 
 
-# ─────────────────────────────────────────
-#  RETETE PERSONALIZATE
-# ─────────────────────────────────────────
-class Recipe(models.Model):
-    user        = models.ForeignKey(User, on_delete=models.CASCADE, related_name='recipes')
-    name        = models.CharField(max_length=200)
-    description = models.TextField(blank=True)
-    servings    = models.PositiveSmallIntegerField(default=1)
-    image       = models.ImageField(upload_to='recipes/', blank=True, null=True)
-    created_at  = models.DateTimeField(auto_now_add=True)
-    updated_at  = models.DateTimeField(auto_now=True)
 
-    # Valori totale (calculate si stocate la adaugarea/stergerea unui ingredient)
-    total_kcal    = models.DecimalField(max_digits=8, decimal_places=1, default=0)
+#  RETETE PERSONALIZATE
+
+class Recipe(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='recipes')
+    name = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
+    instructions = models.TextField(blank=True)
+    servings = models.PositiveSmallIntegerField(default=1)
+    image = models.ImageField(upload_to='recipes/', blank=True, null=True)
+    prep_time_minutes = models.PositiveSmallIntegerField(default=0, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    total_kcal = models.DecimalField(max_digits=8, decimal_places=1, default=0)
     total_protein = models.DecimalField(max_digits=7, decimal_places=1, default=0)
-    total_carbs   = models.DecimalField(max_digits=7, decimal_places=1, default=0)
-    total_fat     = models.DecimalField(max_digits=7, decimal_places=1, default=0)
+    total_carbs = models.DecimalField(max_digits=7, decimal_places=1, default=0)
+    total_fat = models.DecimalField(max_digits=7, decimal_places=1, default=0)
 
     class Meta:
-        verbose_name        = 'Reteta'
+        verbose_name = 'Reteta'
         verbose_name_plural = 'Retete'
-        ordering            = ['-created_at']
+        ordering = ['-created_at']
 
     def __str__(self):
         return f'{self.name} (de {self.user.username})'
 
     def recalculate_totals(self):
-        """Recalculeaza totalurile nutritionale din toate ingredientele."""
         totals = {'kcal': 0, 'protein': 0, 'carbs': 0, 'fat': 0}
-        for ing in self.ingredients.all():
-            n = ing.food.calculate_nutrition(ing.grams)
-            totals['kcal']    += n['kcal']
-            totals['protein'] += n['protein']
-            totals['carbs']   += n['carbs']
-            totals['fat']     += n['fat']
-        self.total_kcal    = totals['kcal']
-        self.total_protein = totals['protein']
-        self.total_carbs   = totals['carbs']
-        self.total_fat     = totals['fat']
-        self.save()
+
+        for ing in self.ingredients.select_related('food').all():
+            if ing.food:
+                n = ing.food.calculate_nutrition(ing.grams)
+                totals['kcal'] += n['kcal']
+                totals['protein'] += n['protein']
+                totals['carbs'] += n['carbs']
+                totals['fat'] += n['fat']
+
+        self.total_kcal = round(totals['kcal'], 1)
+        self.total_protein = round(totals['protein'], 1)
+        self.total_carbs = round(totals['carbs'], 1)
+        self.total_fat = round(totals['fat'], 1)
+        self.save(update_fields=['total_kcal', 'total_protein', 'total_carbs', 'total_fat', 'updated_at'])
 
     @property
     def kcal_per_serving(self):
-        """Calorii per portie."""
         return round(float(self.total_kcal) / self.servings, 1) if self.servings else 0
+
+    @property
+    def protein_per_serving(self):
+        return round(float(self.total_protein) / self.servings, 1) if self.servings else 0
+
+    @property
+    def carbs_per_serving(self):
+        return round(float(self.total_carbs) / self.servings, 1) if self.servings else 0
+
+    @property
+    def fat_per_serving(self):
+        return round(float(self.total_fat) / self.servings, 1) if self.servings else 0
 
 
 class RecipeIngredient(models.Model):
     recipe = models.ForeignKey(Recipe, on_delete=models.CASCADE, related_name='ingredients')
-    food   = models.ForeignKey(Food, on_delete=models.CASCADE)
-    grams  = models.DecimalField(max_digits=6, decimal_places=1)
+    food = models.ForeignKey(Food, on_delete=models.SET_NULL, null=True, blank=True)
+    name = models.CharField(max_length=200)
+    grams = models.DecimalField(max_digits=6, decimal_places=1)
 
     class Meta:
-        verbose_name        = 'Ingredient reteta'
+        verbose_name = 'Ingredient reteta'
         verbose_name_plural = 'Ingrediente reteta'
 
     def __str__(self):
-        return f'{self.food.name} {self.grams}g in {self.recipe.name}'
+        food_name = self.food.name if self.food else self.name
+        return f'{food_name} {self.grams}g in {self.recipe.name}'
