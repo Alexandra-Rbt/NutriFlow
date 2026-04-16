@@ -1,166 +1,155 @@
 {% extends 'base.html' %}
+
 {% block title %}Setări — NutriFlow{% endblock %}
+{% block page_title %}Setări{% endblock %}
+{% block page_subtitle %}Gestionează profilul tău și alege tema aplicației.{% endblock %}
 
 {% block content %}
-<div class="page-container">
-
-  <div class="page-header">
-    <h1>⚙️ Setări</h1>
-    <p>Personalizează aplicația și profilul tău</p>
-  </div>
-
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start">
-
-    {# ── TEMA ───────────────────────────────────── #}
-    <div class="card animate-in">
-      <div class="card-header">
-        <div class="card-title"><span class="icon">🎨</span> Tema aplicației</div>
-        <span id="theme-saved-badge" style="display:none"
-              class="badge badge-accent">✓ Salvat</span>
+<section class="grid-2">
+  <article class="card">
+    <div class="card-header">
+      <div>
+        <h2 class="card-title">Profil</h2>
+        <p class="card-subtitle">Actualizează datele personale și obiectivele tale zilnice.</p>
       </div>
-      <p style="font-size:13px;color:var(--text-muted);margin-bottom:1.25rem">
-        Alege stilul vizual preferat. Schimbarea se aplică imediat și se salvează în contul tău.
-      </p>
+    </div>
 
-      <div class="theme-grid">
-        {% for t in themes %}
-        <div class="theme-option {% if profile.theme == t.key %}active{% endif %}"
-             data-theme="{{ t.key }}">
-          <div class="theme-check">✓</div>
-          {# Bara de culoare reprezentativa pentru fiecare tema #}
-          <div class="theme-preview-bar"
-               style="background:{% if t.key == 'dark-aura' %}linear-gradient(90deg,#a78bfa,#7c3aed)
-                      {% elif t.key == 'fresh-mint' %}linear-gradient(90deg,#10b981,#34d399)
-                      {% elif t.key == 'warm-coral' %}linear-gradient(90deg,#ff6b47,#ff8f6b)
-                      {% else %}linear-gradient(90deg,#0ea5e9,#38bdf8){% endif %}">
-          </div>
-          {# Mini preview #}
-          <div style="padding:10px 12px 8px;background:{% if t.key == 'dark-aura' %}#13131f
-               {% elif t.key == 'fresh-mint' %}#f0fdf4
-               {% elif t.key == 'warm-coral' %}#fff7f5
-               {% else %}#f1f5f9{% endif %}">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-              <div style="width:40%;height:6px;border-radius:3px;background:{% if t.key == 'dark-aura' %}#a78bfa
-                   {% elif t.key == 'fresh-mint' %}#10b981
-                   {% elif t.key == 'warm-coral' %}#ff6b47
-                   {% else %}#0ea5e9{% endif %}"></div>
-              <div style="width:20%;height:6px;border-radius:3px;background:{% if t.key == 'dark-aura' %}#1a1a2e
-                   {% elif t.key == 'fresh-mint' %}#d1fae5
-                   {% elif t.key == 'warm-coral' %}#ffe0d6
-                   {% else %}#e2e8f0{% endif %}"></div>
-            </div>
-            <div style="display:flex;gap:4px">
-              {% for i in "123" %}
-              <div style="flex:1;height:22px;border-radius:4px;background:{% if t.key == 'dark-aura' %}#1a1a2e
-                   {% elif t.key == 'fresh-mint' %}#ecfdf5
-                   {% elif t.key == 'warm-coral' %}#fff0ec
-                   {% else %}#f8fafc{% endif %}"></div>
-              {% endfor %}
-            </div>
-          </div>
-          <div class="theme-info">
-            <div class="theme-name">{{ t.name }}</div>
-            <div class="theme-desc">{{ t.desc }}</div>
-          </div>
+    <form method="post" enctype="multipart/form-data" class="form-grid">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="update_profile">
+
+      <div class="form-grid cols-2">
+        <div class="field-group">
+          <label for="{{ profile_form.avatar.id_for_label }}">Avatar</label>
+          {{ profile_form.avatar }}
         </div>
+
+        <div class="field-group">
+          <label for="{{ profile_form.birth_date.id_for_label }}">Data nașterii</label>
+          {{ profile_form.birth_date }}
+        </div>
+
+        <div class="field-group">
+          <label for="{{ profile_form.gender.id_for_label }}">Gen</label>
+          {{ profile_form.gender }}
+        </div>
+
+        <div class="field-group">
+          <label for="{{ profile_form.height_cm.id_for_label }}">Înălțime (cm)</label>
+          {{ profile_form.height_cm }}
+        </div>
+
+        <div class="field-group">
+          <label for="{{ profile_form.activity_level.id_for_label }}">Nivel activitate</label>
+          {{ profile_form.activity_level }}
+        </div>
+
+        <div class="field-group">
+          <label for="{{ profile_form.goal.id_for_label }}">Obiectiv</label>
+          {{ profile_form.goal }}
+        </div>
+
+        <div class="field-group">
+          <label for="{{ profile_form.daily_kcal_target.id_for_label }}">Țintă calorii</label>
+          {{ profile_form.daily_kcal_target }}
+        </div>
+
+        <div class="field-group">
+          <label for="{{ profile_form.protein_target_g.id_for_label }}">Țintă proteine (g)</label>
+          {{ profile_form.protein_target_g }}
+        </div>
+
+        <div class="field-group">
+          <label for="{{ profile_form.carbs_target_g.id_for_label }}">Țintă carbohidrați (g)</label>
+          {{ profile_form.carbs_target_g }}
+        </div>
+
+        <div class="field-group">
+          <label for="{{ profile_form.fat_target_g.id_for_label }}">Țintă grăsimi (g)</label>
+          {{ profile_form.fat_target_g }}
+        </div>
+      </div>
+
+      <div class="page-actions">
+        <button type="submit" class="btn btn-primary">Salvează profilul</button>
+      </div>
+    </form>
+  </article>
+
+  <article class="card">
+    <div class="card-header">
+      <div>
+        <h2 class="card-title">Aspect</h2>
+        <p class="card-subtitle">Alege tema care îți place și păstrează aplicația confortabilă vizual.</p>
+      </div>
+    </div>
+
+    <form method="post" class="form-grid">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="update_theme">
+
+      <div class="field-group">
+        <label for="{{ theme_form.theme.id_for_label }}">Tema activă</label>
+        {{ theme_form.theme }}
+      </div>
+
+      <div class="grid-2">
+        {% for theme in themes %}
+        <label class="surface-card" style="padding:18px;cursor:pointer;border:1px solid var(--border);">
+          <div style="display:flex;justify-content:space-between;align-items:start;gap:12px;margin-bottom:12px;">
+            <div>
+              <h3 class="card-title" style="font-size:1rem;">{{ theme.name }}</h3>
+              <p class="card-subtitle">{{ theme.desc }}</p>
+            </div>
+            <input
+              type="radio"
+              name="theme"
+              value="{{ theme.key }}"
+              {% if profile.theme == theme.key %}checked{% endif %}
+              style="width:18px;height:18px;accent-color:var(--accent);"
+            >
+          </div>
+
+          <div style="display:grid;gap:10px;">
+            <div style="height:18px;border-radius:999px;background:{{ theme.top }};"></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+              <div style="height:54px;border-radius:14px;background:{{ theme.bg }};"></div>
+              <div style="height:54px;border-radius:14px;background:{{ theme.block }};"></div>
+              <div style="height:54px;border-radius:14px;background:{{ theme.muted }};"></div>
+            </div>
+          </div>
+        </label>
         {% endfor %}
       </div>
-    </div>
 
-    {# ── PROFIL ─────────────────────────────────── #}
-    <div class="card animate-in" style="animation-delay:0.1s">
-      <div class="card-header">
-        <div class="card-title"><span class="icon">👤</span> Profilul meu</div>
+      <div class="page-actions">
+        <button type="submit" class="btn btn-secondary">Salvează tema</button>
       </div>
-      <form method="POST">
-        {% csrf_token %}
-        <input type="hidden" name="action" value="update_profile">
+    </form>
 
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-          <div class="form-group">
-            <label class="form-label">Data nașterii</label>
-            <input type="date" name="birth_date" class="form-control"
-                   value="{{ profile.birth_date|date:'Y-m-d'|default:'' }}">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Gen</label>
-            <select name="gender" class="form-control form-select">
-              <option value="">—</option>
-              {% for val, lbl in profile.GENDER_CHOICES %}
-                <option value="{{ val }}" {% if profile.gender == val %}selected{% endif %}>{{ lbl }}</option>
-              {% endfor %}
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Înălțime (cm)</label>
-            <input type="number" name="height_cm" class="form-control"
-                   value="{{ profile.height_cm|default:'' }}" min="100" max="250">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Nivel activitate</label>
-            <select name="activity_level" class="form-control form-select">
-              {% for val, lbl in profile.ACTIVITY_CHOICES %}
-                <option value="{{ val }}" {% if profile.activity_level == val %}selected{% endif %}>{{ lbl }}</option>
-              {% endfor %}
-            </select>
+    <div class="surface-card" style="padding:20px;">
+      <h3 class="section-title">Previzualizare</h3>
+      <p class="section-copy">Temele definite în aplicație sunt Graphite Peach și Soft Sand, pregătite pentru un contrast mai plăcut și o identitate mai premium. [web:116][web:308]</p>
+
+      <div class="grid-2">
+        <div style="padding:18px;border-radius:18px;background:var(--surface-2);border:1px solid var(--border);">
+          <span class="stat-label">Accent</span>
+          <div style="display:flex;gap:8px;margin-top:8px;">
+            <span style="width:22px;height:22px;border-radius:999px;background:var(--accent);display:inline-block;"></span>
+            <span style="width:22px;height:22px;border-radius:999px;background:var(--accent-2);display:inline-block;"></span>
           </div>
         </div>
 
-        <div class="form-group">
-          <label class="form-label">Obiectiv</label>
-          <select name="goal" class="form-control form-select">
-            {% for val, lbl in profile.GOAL_CHOICES %}
-              <option value="{{ val }}" {% if profile.goal == val %}selected{% endif %}>{{ lbl }}</option>
-            {% endfor %}
-          </select>
-        </div>
-
-        <div style="border-top:1px solid var(--divider);padding-top:1rem;margin-top:1rem">
-          <p style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.4px;
-                    color:var(--text-muted);margin-bottom:12px">Obiective zilnice</p>
-          <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px">
-            <div class="form-group">
-              <label class="form-label">Calorii (kcal)</label>
-              <input type="number" name="daily_kcal_target" class="form-control"
-                     value="{{ profile.daily_kcal_target }}" min="500" max="10000">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Proteine (g)</label>
-              <input type="number" name="protein_target_g" class="form-control"
-                     value="{{ profile.protein_target_g }}" min="10" max="500">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Carbohidrați (g)</label>
-              <input type="number" name="carbs_target_g" class="form-control"
-                     value="{{ profile.carbs_target_g }}" min="10" max="1000">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Grăsimi (g)</label>
-              <input type="number" name="fat_target_g" class="form-control"
-                     value="{{ profile.fat_target_g }}" min="10" max="500">
-            </div>
+        <div style="padding:18px;border-radius:18px;background:var(--surface-2);border:1px solid var(--border);">
+          <span class="stat-label">Suprafețe</span>
+          <div style="display:flex;gap:8px;margin-top:8px;">
+            <span style="width:22px;height:22px;border-radius:999px;background:var(--bg);display:inline-block;border:1px solid var(--border);"></span>
+            <span style="width:22px;height:22px;border-radius:999px;background:var(--surface);display:inline-block;border:1px solid var(--border);"></span>
+            <span style="width:22px;height:22px;border-radius:999px;background:var(--surface-3);display:inline-block;border:1px solid var(--border);"></span>
           </div>
         </div>
-
-        <button type="submit" class="btn btn-primary" style="width:100%;margin-top:8px">
-          💾 Salvează profilul
-        </button>
-      </form>
+      </div>
     </div>
-
-  </div>
-</div>
-
-{% block extra_js %}
-<script>
-// Arata badge "Salvat" dupa schimbare tema
-document.querySelectorAll('.theme-option').forEach(function(el) {
-  el.addEventListener('click', function() {
-    const badge = document.getElementById('theme-saved-badge');
-    badge.style.display = 'inline-flex';
-    setTimeout(() => { badge.style.display = 'none'; }, 3000);
-  });
-});
-</script>
-{% endblock %}
+  </article>
+</section>
 {% endblock %}

@@ -1,37 +1,49 @@
 {% extends 'base.html' %}
+
 {% block title %}Autentificare — NutriFlow{% endblock %}
-{% block content %}
-<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:2rem">
-  <div style="width:100%;max-width:400px">
-    <div style="text-align:center;margin-bottom:2rem">
-      <div style="font-size:2.5rem;font-weight:900;color:var(--accent);letter-spacing:-1px">
-        ● NutriFlow
-      </div>
-      <p style="color:var(--text-muted);margin-top:8px">Jurnalul tău alimentar inteligent</p>
-    </div>
-    <div class="card">
-      <div class="card-header">
-        <div class="card-title">Intră în cont</div>
-      </div>
-      <form method="POST">
-        {% csrf_token %}
-        <div class="form-group">
-          <label class="form-label">Username</label>
-          <input type="text" name="username" class="form-control" placeholder="username-ul tău" autofocus required>
+
+{% block auth_content %}
+<section class="auth-card">
+  <h1>Bine ai revenit</h1>
+  <p>Intră în contul tău și continuă cu jurnalul, plannerul și rețetele tale.</p>
+
+  <form method="post" class="form-grid">
+    {% csrf_token %}
+
+    <div class="field-group">
+      <label for="{{ form.username.id_for_label }}">Username</label>
+      {{ form.username }}
+      {% if form.username.errors %}
+        <div class="alert alert-error">
+          {{ form.username.errors|striptags }}
         </div>
-        <div class="form-group">
-          <label class="form-label">Parolă</label>
-          <input type="password" name="password" class="form-control" placeholder="••••••••" required>
-        </div>
-        <button type="submit" class="btn btn-primary" style="width:100%;margin-top:8px">
-          Autentifică-te →
-        </button>
-      </form>
-      <p style="text-align:center;margin-top:1rem;font-size:13px;color:var(--text-muted)">
-        Nu ai cont?
-        <a href="{% url 'register' %}" style="color:var(--accent);font-weight:600">Înregistrează-te</a>
-      </p>
+      {% endif %}
     </div>
+
+    <div class="field-group">
+      <label for="{{ form.password.id_for_label }}">Parolă</label>
+      {{ form.password }}
+      {% if form.password.errors %}
+        <div class="alert alert-error">
+          {{ form.password.errors|striptags }}
+        </div>
+      {% endif %}
+    </div>
+
+    {% if form.non_field_errors %}
+      <div class="alert alert-error">
+        {{ form.non_field_errors|striptags }}
+      </div>
+    {% endif %}
+
+    <button type="submit" class="btn btn-primary">Intră în cont</button>
+  </form>
+
+  <div style="margin-top:18px;">
+    <p class="section-copy" style="margin-bottom:0;">
+      Nu ai cont?
+      <a href="{% url 'register' %}" style="color:var(--accent);font-weight:700;">Creează unul aici</a>.
+    </p>
   </div>
-</div>
+</section>
 {% endblock %}

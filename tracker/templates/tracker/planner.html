@@ -1,0 +1,187 @@
+{% extends 'base.html' %}
+
+{% block title %}Planner — NutriFlow{% endblock %}
+{% block page_title %}Planner săptămânal{% endblock %}
+{% block page_subtitle %}Planifică mesele pe zile și transformă planul într-o listă de cumpărături.{% endblock %}
+
+{% block content %}
+<section class="grid-2">
+  <article class="card">
+    <div class="card-header">
+      <div>
+        <h2 class="card-title">Săptămâna curentă</h2>
+        <p class="card-subtitle">{{ start_date|date:"d M Y" }} — {{ end_date|date:"d M Y" }}</p>
+      </div>
+
+      <div class="page-actions">
+        <a href="?week={{ prev_week|date:'Y-m-d' }}" class="btn btn-ghost btn-sm">Săptămâna trecută</a>
+        <a href="?week={{ next_week|date:'Y-m-d' }}" class="btn btn-secondary btn-sm">Săptămâna viitoare</a>
+        <form method="post" action="{% url 'generate_shopping_list' %}">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-primary btn-sm">Generează lista</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="form-grid">
+      {% for day in week_days %}
+      <div class="surface-card" style="padding:20px;">
+        <div class="card-header" style="margin-bottom:14px;">
+          <div>
+            <h3 class="card-title">{{ day.label }}</h3>
+            <p class="card-subtitle">{{ day.date|date:"d F" }}</p>
+          </div>
+          <span class="badge">{{ day.items.breakfast|length|add:day.items.lunch|length|add:day.items.dinner|length|add:day.items.snack|length }} mese</span>
+        </div>
+
+        <div class="form-grid">
+          <div>
+            <h4 class="section-title" style="font-size:0.95rem;">Mic dejun</h4>
+            {% if day.items.breakfast %}
+              {% for item in day.items.breakfast %}
+              <div class="surface-card" style="padding:14px;margin-bottom:10px;">
+                <strong>{{ item.recipe.name }}</strong>
+                <div class="card-subtitle">{{ item.servings }} porții</div>
+              </div>
+              {% endfor %}
+            {% else %}
+              <p class="section-copy">Nimic planificat.</p>
+            {% endif %}
+          </div>
+
+          <div>
+            <h4 class="section-title" style="font-size:0.95rem;">Prânz</h4>
+            {% if day.items.lunch %}
+              {% for item in day.items.lunch %}
+              <div class="surface-card" style="padding:14px;margin-bottom:10px;">
+                <strong>{{ item.recipe.name }}</strong>
+                <div class="card-subtitle">{{ item.servings }} porții</div>
+              </div>
+              {% endfor %}
+            {% else %}
+              <p class="section-copy">Nimic planificat.</p>
+            {% endif %}
+          </div>
+
+          <div>
+            <h4 class="section-title" style="font-size:0.95rem;">Cină</h4>
+            {% if day.items.dinner %}
+              {% for item in day.items.dinner %}
+              <div class="surface-card" style="padding:14px;margin-bottom:10px;">
+                <strong>{{ item.recipe.name }}</strong>
+                <div class="card-subtitle">{{ item.servings }} porții</div>
+              </div>
+              {% endfor %}
+            {% else %}
+              <p class="section-copy">Nimic planificat.</p>
+            {% endif %}
+          </div>
+
+          <div>
+            <h4 class="section-title" style="font-size:0.95rem;">Gustare</h4>
+            {% if day.items.snack %}
+              {% for item in day.items.snack %}
+              <div class="surface-card" style="padding:14px;margin-bottom:10px;">
+                <strong>{{ item.recipe.name }}</strong>
+                <div class="card-subtitle">{{ item.servings }} porții</div>
+              </div>
+              {% endfor %}
+            {% else %}
+              <p class="section-copy">Nimic planificat.</p>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </article>
+
+  <article class="card">
+    <div class="card-header">
+      <div>
+        <h2 class="card-title">Adaugă o masă</h2>
+        <p class="card-subtitle">Alege ziua, tipul de masă și rețeta dorită.</p>
+      </div>
+    </div>
+
+    <form method="post" class="form-grid">
+      {% csrf_token %}
+
+      <div class="form-grid cols-2">
+        <div class="field-group">
+          <label for="{{ form.date.id_for_label }}">Data</label>
+          {{ form.date }}
+        </div>
+
+        <div class="field-group">
+          <label for="{{ form.meal_type.id_for_label }}">Tip masă</label>
+          {{ form.meal_type }}
+        </div>
+
+        <div class="field-group" style="grid-column: 1 / -1;">
+          <label for="{{ form.recipe.id_for_label }}">Rețetă</label>
+          {{ form.recipe }}
+        </div>
+
+        <div class="field-group">
+          <label for="{{ form.servings.id_for_label }}">Porții</label>
+          {{ form.servings }}
+        </div>
+
+        <div class="field-group">
+          <label for="{{ form.is_completed.id_for_label }}">Status</label>
+          <div class="surface-card" style="padding:14px;min-height:48px;display:flex;align-items:center;">
+            {{ form.is_completed }}
+            <span style="margin-left:10px;color:var(--text-muted);">Marchează ca pregătită / consumată</span>
+          </div>
+        </div>
+
+        <div class="field-group" style="grid-column: 1 / -1;">
+          <label for="{{ form.notes.id_for_label }}">Observații</label>
+          {{ form.notes }}
+        </div>
+      </div>
+
+      <div class="page-actions">
+        <button type="submit" class="btn btn-primary">Adaugă în planner</button>
+        <a href="{% url 'recipes' %}" class="btn btn-secondary">Vezi rețetele</a>
+      </div>
+    </form>
+
+    <div style="margin-top:24px;">
+      <h3 class="section-title">Mese planificate</h3>
+
+      {% if plans %}
+      <div class="table-wrap">
+        <table class="simple-table">
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Masă</th>
+              <th>Rețetă</th>
+              <th>Porții</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in plans %}
+            <tr>
+              <td>{{ item.date|date:"d M Y" }}</td>
+              <td>{{ item.get_meal_type_display }}</td>
+              <td>{{ item.recipe.name }}</td>
+              <td>{{ item.servings }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="empty-state" style="padding:26px 0 0;">
+        <div class="empty-icon">🗓️</div>
+        <h3>Nu ai încă mese planificate</h3>
+        <p>Adaugă prima rețetă în planner ca să poți genera și lista de cumpărături.</p>
+      </div>
+      {% endif %}
+    </div>
+  </article>
+</section>
+{% endblock %}

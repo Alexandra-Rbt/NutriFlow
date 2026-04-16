@@ -1,19 +1,26 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth.models import User
-from .models import UserProfile, FoodLog, BodyWeight, Recipe, RecipeIngredient, Food
+from .models import (
+    UserProfile,
+    FoodLog,
+    BodyWeight,
+    Recipe,
+    RecipeIngredient,
+    Food,
+    MealPlan,
+    ShoppingList,
+    ShoppingListItem,
+)
 
-
-
-#  AUTENTIFICARE
 
 class RegisterForm(UserCreationForm):
-    email      = forms.EmailField(required=True, label='Email')
+    email = forms.EmailField(required=True, label='Email')
     first_name = forms.CharField(max_length=50, required=True, label='Prenume')
-    last_name  = forms.CharField(max_length=50, required=True, label='Nume')
+    last_name = forms.CharField(max_length=50, required=True, label='Nume')
 
     class Meta:
-        model  = User
+        model = User
         fields = ['username', 'first_name', 'last_name', 'email', 'password1', 'password2']
 
 
@@ -21,11 +28,9 @@ class LoginForm(AuthenticationForm):
     pass
 
 
-#  PROFIL & SETARI
-
 class UserProfileForm(forms.ModelForm):
     class Meta:
-        model  = UserProfile
+        model = UserProfile
         fields = [
             'avatar', 'birth_date', 'gender', 'height_cm',
             'activity_level', 'goal',
@@ -37,48 +42,44 @@ class UserProfileForm(forms.ModelForm):
 
 
 class ThemeForm(forms.ModelForm):
-    """Form simplu doar pentru schimbarea temei."""
     class Meta:
-        model  = UserProfile
+        model = UserProfile
         fields = ['theme']
-
-
-#  JURNAL ALIMENTAR
 
 class FoodLogForm(forms.ModelForm):
     class Meta:
-        model  = FoodLog
-        fields = ['food', 'date', 'meal_type', 'grams', 'notes']
+        model = FoodLog
+        fields = ['meal_type', 'grams', 'notes']
         widgets = {
-            'date':  forms.DateInput(attrs={'type': 'date'}),
+            'meal_type': forms.Select(attrs={'class': 'nf-input'}),
             'grams': forms.NumberInput(attrs={
+                'class': 'nf-input',
                 'step': '1',
-                'min':  '1',
+                'min': '1',
                 'placeholder': 'ex: 150',
             }),
-            'notes': forms.TextInput(attrs={'placeholder': 'Observatii (optional)'}),
+            'notes': forms.TextInput(attrs={
+                'class': 'nf-input',
+                'placeholder': 'Observații (opțional)',
+            }),
         }
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # Sorteaza alimentele alfabetic
-        self.fields['food'].queryset = Food.objects.all().order_by('name')
-        self.fields['food'].empty_label = '— Alege aliment —'
+    def clean_food(self):
+        value = self.cleaned_data.get('food', '').strip()
+        if not value:
+            raise forms.ValidationError('Alege un aliment.')
+        return value
 
-
-#  GREUTATE
 class BodyWeightForm(forms.ModelForm):
     class Meta:
-        model  = BodyWeight
+        model = BodyWeight
         fields = ['date', 'weight_kg', 'notes']
         widgets = {
-            'date':      forms.DateInput(attrs={'type': 'date'}),
+            'date': forms.DateInput(attrs={'type': 'date'}),
             'weight_kg': forms.NumberInput(attrs={'step': '0.1', 'min': '20', 'placeholder': 'ex: 75.5'}),
-            'notes':     forms.TextInput(attrs={'placeholder': 'Observatii (optional)'}),
+            'notes': forms.TextInput(attrs={'placeholder': 'Observații (opțional)'}),
         }
 
-
-#  RETETE
 
 class RecipeForm(forms.ModelForm):
     class Meta:
@@ -146,8 +147,9 @@ class RecipeForm(forms.ModelForm):
 class RecipeIngredientForm(forms.ModelForm):
     class Meta:
         model = RecipeIngredient
-        fields = ['name', 'grams']
+        fields = ['food', 'name', 'grams']
         widgets = {
+            'food': forms.Select(attrs={'class': 'nf-input'}),
             'name': forms.TextInput(attrs={
                 'class': 'nf-input',
                 'placeholder': 'Ex: Piept de pui',
@@ -160,6 +162,7 @@ class RecipeIngredientForm(forms.ModelForm):
             }),
         }
         labels = {
+            'food': 'Aliment (opțional)',
             'name': 'Ingredient',
             'grams': 'Grame',
         }
@@ -177,17 +180,103 @@ class RecipeIngredientForm(forms.ModelForm):
         return grams
 
 
-
-#  ALIMENT PERSONALIZAT
-
 class CustomFoodForm(forms.ModelForm):
     class Meta:
-        model  = Food
-        fields = ['name', 'category', 'kcal_per_100g', 'protein_per_100g', 'carbs_per_100g', 'fat_per_100g', 'fiber_per_100g']
+        model = Food
+        fields = [
+            'name', 'category', 'kcal_per_100g',
+            'protein_per_100g', 'carbs_per_100g',
+            'fat_per_100g', 'fiber_per_100g'
+        ]
         widgets = {
-            'kcal_per_100g':    forms.NumberInput(attrs={'step': '0.1', 'min': '0'}),
-            'protein_per_100g': forms.NumberInput(attrs={'step': '0.1', 'min': '0'}),
-            'carbs_per_100g':   forms.NumberInput(attrs={'step': '0.1', 'min': '0'}),
-            'fat_per_100g':     forms.NumberInput(attrs={'step': '0.1', 'min': '0'}),
-            'fiber_per_100g':   forms.NumberInput(attrs={'step': '0.1', 'min': '0'}),
+            'name': forms.TextInput(attrs={'class': 'nf-input', 'placeholder': 'Ex: Orez basmati'}),
+            'category': forms.Select(attrs={'class': 'nf-input'}),
+            'kcal_per_100g': forms.NumberInput(attrs={'class': 'nf-input', 'step': '0.1', 'min': '0'}),
+            'protein_per_100g': forms.NumberInput(attrs={'class': 'nf-input', 'step': '0.1', 'min': '0'}),
+            'carbs_per_100g': forms.NumberInput(attrs={'class': 'nf-input', 'step': '0.1', 'min': '0'}),
+            'fat_per_100g': forms.NumberInput(attrs={'class': 'nf-input', 'step': '0.1', 'min': '0'}),
+            'fiber_per_100g': forms.NumberInput(attrs={'class': 'nf-input', 'step': '0.1', 'min': '0'}),
         }
+
+
+class MealPlanForm(forms.ModelForm):
+    class Meta:
+        model = MealPlan
+        fields = ['date', 'meal_type', 'recipe', 'servings', 'notes', 'is_completed']
+        widgets = {
+            'date': forms.DateInput(attrs={'type': 'date'}),
+            'meal_type': forms.Select(attrs={'class': 'nf-input'}),
+            'recipe': forms.Select(attrs={'class': 'nf-input'}),
+            'servings': forms.NumberInput(attrs={
+                'class': 'nf-input',
+                'step': '0.5',
+                'min': '0.5',
+                'placeholder': '1',
+            }),
+            'notes': forms.TextInput(attrs={'class': 'nf-input', 'placeholder': 'Observații...'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        if user:
+            self.fields['recipe'].queryset = Recipe.objects.filter(user=user).order_by('-created_at')
+        self.fields['recipe'].empty_label = '— Alege rețetă —'
+
+    def clean_servings(self):
+        servings = self.cleaned_data.get('servings')
+        if servings is None or servings <= 0:
+            raise forms.ValidationError('Porțiile trebuie să fie mai mari decât 0.')
+        return servings
+
+
+class ShoppingListForm(forms.ModelForm):
+    class Meta:
+        model = ShoppingList
+        fields = ['name', 'start_date', 'end_date', 'is_active']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'nf-input', 'placeholder': 'Lista săptămânii'}),
+            'start_date': forms.DateInput(attrs={'type': 'date'}),
+            'end_date': forms.DateInput(attrs={'type': 'date'}),
+        }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        start_date = cleaned_data.get('start_date')
+        end_date = cleaned_data.get('end_date')
+        if start_date and end_date and end_date < start_date:
+            raise forms.ValidationError('Data de sfârșit nu poate fi înainte de data de început.')
+        return cleaned_data
+
+
+class ShoppingListItemForm(forms.ModelForm):
+    class Meta:
+        model = ShoppingListItem
+        fields = ['food', 'name', 'quantity', 'unit', 'is_checked', 'source_recipe']
+        widgets = {
+            'food': forms.Select(attrs={'class': 'nf-input'}),
+            'name': forms.TextInput(attrs={'class': 'nf-input', 'placeholder': 'Ex: Orez'}),
+            'quantity': forms.NumberInput(attrs={
+                'class': 'nf-input',
+                'step': '0.1',
+                'min': '0.1',
+                'placeholder': 'Ex: 500',
+            }),
+            'unit': forms.TextInput(attrs={'class': 'nf-input', 'placeholder': 'g / buc / ml'}),
+            'source_recipe': forms.Select(attrs={'class': 'nf-input'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        if user:
+            self.fields['source_recipe'].queryset = Recipe.objects.filter(user=user).order_by('-created_at')
+            self.fields['source_recipe'].empty_label = '— Fără sursă —'
+        self.fields['food'].queryset = Food.objects.all().order_by('name')
+        self.fields['food'].empty_label = '— Alege aliment —'
+
+    def clean_quantity(self):
+        quantity = self.cleaned_data.get('quantity')
+        if quantity is None or quantity <= 0:
+            raise forms.ValidationError('Cantitatea trebuie să fie mai mare decât 0.')
+        return quantity

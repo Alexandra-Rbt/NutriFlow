@@ -1,287 +1,90 @@
 {% extends 'base.html' %}
+
 {% block title %}Alimente — NutriFlow{% endblock %}
+{% block page_title %}Baza de alimente{% endblock %}
+{% block page_subtitle %}Caută și gestionează alimentele folosite în jurnal și în rețete.{% endblock %}
 
 {% block content %}
-<div class="page-container">
-  <div class="page-header">
-    <h1>🥗 Alimente</h1>
-    <p>Caută din milioane de produse reale prin Open Food Facts sau adaugă manual</p>
-  </div>
-
-  <div style="display:grid;grid-template-columns:1fr 2fr;gap:24px;align-items:start">
-
+<section class="card">
+  <div class="card-header">
     <div>
-      <div class="card animate-in" style="margin-bottom:16px">
-        <div class="card-header">
-          <div class="card-title"><span class="icon">🌍</span> Open Food Facts</div>
-          <span class="badge badge-accent" style="font-size:10px">Milioane de produse</span>
-        </div>
-        <div style="display:flex;gap:0;margin-bottom:14px;border:1px solid var(--border);border-radius:10px;overflow:hidden">
-          <button class="off-tab active" data-tab="text"
-                  style="flex:1;padding:8px;font-size:13px;font-weight:600;border:none;cursor:pointer;background:var(--accent);color:#fff;transition:all .2s">
-            🔍 Text
-          </button>
-          <button class="off-tab" data-tab="barcode"
-                  style="flex:1;padding:8px;font-size:13px;font-weight:600;border:none;cursor:pointer;background:var(--bg-hover);color:var(--text-secondary);transition:all .2s">
-            📷 Barcode
-          </button>
-        </div>
-        <div id="tab-text">
-          <div style="display:flex;gap:8px;margin-bottom:10px">
-            <input type="text" id="off-search-input" class="form-control" placeholder="ex: piept de pui, orez brun..." style="flex:1">
-            <button id="off-search-btn" class="btn btn-primary">Caută</button>
-          </div>
-          <p style="font-size:11px;color:var(--text-muted)">Sursa: <a href="https://world.openfoodfacts.org" target="_blank" style="color:var(--accent)">Open Food Facts</a></p>
-        </div>
-        <div id="tab-barcode" style="display:none">
-          <div style="display:flex;gap:8px">
-            <input type="text" id="off-barcode-input" class="form-control" placeholder="ex: 3017620422003" style="flex:1">
-            <button id="off-barcode-btn" class="btn btn-primary">Import</button>
-          </div>
-          <p style="font-size:11px;color:var(--text-muted);margin-top:6px">Cod EAN de pe ambalaj</p>
-        </div>
-        <div id="off-loading" style="display:none;text-align:center;padding:16px;color:var(--text-muted);font-size:13px">
-          <div class="off-spinner"></div> Se caută...
-        </div>
-        <div id="off-results" style="display:none;margin-top:12px">
-          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:8px" id="off-results-label">Rezultate</div>
-          <div id="off-results-list" style="max-height:380px;overflow-y:auto;border:1px solid var(--border);border-radius:10px"></div>
-          <button id="off-load-more" class="btn btn-secondary btn-sm" style="width:100%;margin-top:8px;display:none">Încarcă mai multe →</button>
-        </div>
-      </div>
-
-      <div class="card animate-in" style="animation-delay:.1s">
-        <div class="card-header">
-          <div class="card-title"><span class="icon">✏️</span> Adaugă manual</div>
-        </div>
-        <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">Valori per <strong>100g</strong></p>
-        <form method="POST" action="{% url 'food_create' %}">
-          {% csrf_token %}
-          <div class="form-group">
-            <label class="form-label">Nume</label>
-            <input type="text" name="name" class="form-control" placeholder="ex: Tort ciocolată" required>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Categorie</label>
-            <select name="category" class="form-control form-select">
-              <option value="protein">Proteine</option><option value="grain">Cereale & Paste</option>
-              <option value="vegetable">Legume</option><option value="fruit">Fructe</option>
-              <option value="dairy">Lactate</option><option value="fat">Grăsimi</option>
-              <option value="snack">Snacks</option><option value="drink">Băuturi</option>
-              <option value="other" selected>Altele</option>
-            </select>
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-            <div class="form-group"><label class="form-label">Calorii (kcal)</label><input type="number" name="kcal_per_100g" class="form-control" placeholder="0" step="0.1" min="0" required></div>
-            <div class="form-group"><label class="form-label">Proteine (g)</label><input type="number" name="protein_per_100g" class="form-control" placeholder="0" step="0.1" min="0" value="0"></div>
-            <div class="form-group"><label class="form-label">Carbohidrați (g)</label><input type="number" name="carbs_per_100g" class="form-control" placeholder="0" step="0.1" min="0" value="0"></div>
-            <div class="form-group"><label class="form-label">Grăsimi (g)</label><input type="number" name="fat_per_100g" class="form-control" placeholder="0" step="0.1" min="0" value="0"></div>
-            <div class="form-group" style="grid-column:1/-1"><label class="form-label">Fibre (g)</label><input type="number" name="fiber_per_100g" class="form-control" placeholder="0" step="0.1" min="0" value="0"></div>
-          </div>
-          <button type="submit" class="btn btn-primary" style="width:100%;margin-top:4px">➕ Adaugă aliment</button>
-        </form>
-      </div>
+      <h2 class="card-title">Toate alimentele</h2>
+      <p class="card-subtitle">Caută un aliment existent sau adaugă unul nou în baza ta.</p>
     </div>
 
-    <div>
-      {% if custom_foods %}
-      <div class="card animate-in" style="margin-bottom:20px">
-        <div class="card-header"><div class="card-title"><span class="icon">⭐</span> Alimentele tale ({{ custom_foods.count }})</div></div>
-        <table class="data-table">
-          <thead><tr><th>Aliment</th><th>Kcal/100g</th><th>Prot.</th><th>Carbo.</th><th>Grăs.</th></tr></thead>
-          <tbody>
-            {% for food in custom_foods %}
-            <tr>
-              <td><strong>{{ food.name }}</strong></td>
-              <td style="color:var(--accent);font-weight:600">{{ food.kcal_per_100g }}</td>
-              <td style="color:var(--color-protein)">{{ food.protein_per_100g }}g</td>
-              <td style="color:var(--color-carbs)">{{ food.carbs_per_100g }}g</td>
-              <td style="color:var(--color-fat)">{{ food.fat_per_100g }}g</td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-      {% endif %}
+    <div class="page-actions">
+      <a href="{% url 'food_create' %}" class="btn btn-primary">Adaugă aliment</a>
+    </div>
+  </div>
 
-      <div class="card animate-in" style="animation-delay:.1s">
-        <div class="card-header">
-          <div class="card-title"><span class="icon">🗃️</span> Baza de date ({{ all_foods.count }} alimente)</div>
-          <input type="text" id="food-search" class="form-control" placeholder="Filtrează..." style="max-width:180px;padding:6px 12px;font-size:13px">
-        </div>
-        <div style="overflow-x:auto">
-          <table class="data-table" id="foods-table">
-            <thead><tr><th>Aliment</th><th>Cat.</th><th>Kcal/100g</th><th>Prot.</th><th>Carbo.</th><th>Grăs.</th><th>Sursa</th></tr></thead>
-            <tbody>
-              {% for food in all_foods %}
-              <tr>
-                <td><strong>{{ food.name }}</strong></td>
-                <td><span class="badge badge-accent" style="font-size:10px">{{ food.get_category_display }}</span></td>
-                <td style="color:var(--accent);font-weight:600">{{ food.kcal_per_100g }}</td>
-                <td style="color:var(--color-protein)">{{ food.protein_per_100g }}g</td>
-                <td style="color:var(--color-carbs)">{{ food.carbs_per_100g }}g</td>
-                <td style="color:var(--color-fat)">{{ food.fat_per_100g }}g</td>
-                <td>{% if food.off_code %}<span style="font-size:10px;color:var(--text-muted)">🌍 OFF</span>{% else %}<span style="font-size:10px;color:var(--text-muted)">✏️</span>{% endif %}</td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
+  <form method="get" class="form-grid">
+    <div class="form-grid cols-2" style="align-items:end;">
+      <div class="field-group">
+        <label for="q">Caută aliment</label>
+        <input type="text" name="q" id="q" value="{{ query }}" placeholder="Ex: ovăz, ouă, iaurt, somon...">
+      </div>
+
+      <div class="page-actions">
+        <button type="submit" class="btn btn-secondary">Caută</button>
+        <a href="{% url 'foods' %}" class="btn btn-ghost">Resetează</a>
       </div>
     </div>
+  </form>
+</section>
 
+{% if foods %}
+<section class="card">
+  <div class="card-header">
+    <div>
+      <h2 class="card-title">Rezultate</h2>
+      <p class="card-subtitle">{{ foods|length }} aliment{{ foods|length|pluralize:"e" }} găsite</p>
+    </div>
   </div>
-</div>
 
-{% block extra_js %}
-<style>
-.off-result-item{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--border-subtle);transition:background .15s}
-.off-result-item:last-child{border-bottom:none}
-.off-result-item:hover{background:var(--accent-bg)}
-.off-result-img{width:40px;height:40px;object-fit:contain;border-radius:6px;background:var(--bg-hover);flex-shrink:0}
-.off-result-ph{width:40px;height:40px;border-radius:6px;background:var(--bg-hover);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
-.off-result-name{font-size:13px;font-weight:600;color:var(--text-primary)}
-.off-result-macros{font-size:11px;color:var(--text-muted);margin-top:2px}
-.off-result-kcal{font-size:13px;font-weight:700;color:var(--accent);margin-left:auto;white-space:nowrap}
-.off-import-btn{padding:4px 10px;font-size:11px;border-radius:6px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-secondary);cursor:pointer;white-space:nowrap;transition:all .15s}
-.off-import-btn:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
-.off-import-btn.imported{background:var(--success-bg);color:var(--success-text);border-color:transparent}
-@keyframes spin{to{transform:rotate(360deg)}}
-.off-spinner{width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;display:inline-block;vertical-align:middle;margin-right:8px}
-</style>
-
-<script>
-(function(){
-  // Tabs
-  document.querySelectorAll('.off-tab').forEach(function(btn){
-    btn.addEventListener('click',function(){
-      var tab=this.dataset.tab;
-      document.querySelectorAll('.off-tab').forEach(function(b){b.style.background='var(--bg-hover)';b.style.color='var(--text-secondary)';});
-      this.style.background='var(--accent)';this.style.color='#fff';
-      document.getElementById('tab-text').style.display=tab==='text'?'':'none';
-      document.getElementById('tab-barcode').style.display=tab==='barcode'?'':'none';
-      document.getElementById('off-results').style.display='none';
-    });
-  });
-
-  var currentPage=1,currentQuery='',isLoading=false;
-
-  function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-
-  function renderResults(products,append){
-    var list=document.getElementById('off-results-list');
-    if(!append)list.innerHTML='';
-    if(!products.length&&!append){
-      list.innerHTML='<div style="padding:20px;text-align:center;font-size:13px;color:var(--text-muted)">Niciun rezultat. Încearcă alt termen.</div>';
-      document.getElementById('off-load-more').style.display='none';
-      return;
-    }
-    products.forEach(function(p){
-      var item=document.createElement('div');
-      item.className='off-result-item';
-      item.dataset.product=JSON.stringify(p);
-      var imgHtml=p.image_url?'<img src="'+p.image_url+'" class="off-result-img" alt="">':'<div class="off-result-ph">🥗</div>';
-      item.innerHTML=imgHtml+
-        '<div style="flex:1;min-width:0">'+
-          '<div class="off-result-name">'+escHtml(p.name)+'</div>'+
-          '<div class="off-result-macros">P&nbsp;'+p.protein+'g &nbsp;·&nbsp; C&nbsp;'+p.carbs+'g &nbsp;·&nbsp; G&nbsp;'+p.fat+'g</div>'+
-        '</div>'+
-        '<span class="off-result-kcal">'+p.kcal+' kcal</span>'+
-        '<button class="off-import-btn">+ Import</button>';
-      item.querySelector('.off-import-btn').addEventListener('click',function(e){
-        e.stopPropagation();
-        importProduct(JSON.parse(item.dataset.product),this);
-      });
-      list.appendChild(item);
-    });
-    document.getElementById('off-load-more').style.display=products.length>=15?'':'none';
-  }
-
-  function doSearch(query,page,append){
-    if(isLoading)return;
-    isLoading=true;currentQuery=query;
-    document.getElementById('off-loading').style.display='block';
-    document.getElementById('off-results').style.display='none';
-    fetch('/api/off/search/?q='+encodeURIComponent(query)+'&page='+page)
-      .then(function(r){return r.json();})
-      .then(function(data){
-        document.getElementById('off-loading').style.display='none';
-        document.getElementById('off-results').style.display='block';
-        document.getElementById('off-results-label').textContent=page===1?'Rezultate pentru "'+query+'"':'Mai multe rezultate';
-        renderResults(data.results||[],append);
-      })
-      .catch(function(){document.getElementById('off-loading').style.display='none';showToast('Eroare conexiune OFF','error');})
-      .finally(function(){isLoading=false;});
-  }
-
-  document.getElementById('off-search-btn').addEventListener('click',function(){
-    var q=document.getElementById('off-search-input').value.trim();
-    if(q.length<2)return;
-    currentPage=1;doSearch(q,1,false);
-  });
-  document.getElementById('off-search-input').addEventListener('keydown',function(e){
-    if(e.key==='Enter')document.getElementById('off-search-btn').click();
-  });
-  document.getElementById('off-load-more').addEventListener('click',function(){
-    currentPage++;doSearch(currentQuery,currentPage,true);
-  });
-
-  document.getElementById('off-barcode-btn').addEventListener('click',function(){
-    var code=document.getElementById('off-barcode-input').value.trim();
-    if(!code)return;
-    document.getElementById('off-loading').style.display='block';
-    document.getElementById('off-results').style.display='none';
-    fetch('/api/off/barcode/?code='+encodeURIComponent(code))
-      .then(function(r){return r.json();})
-      .then(function(data){
-        document.getElementById('off-loading').style.display='none';
-        if(!data.success){showToast('Produs negăsit: '+code,'error');return;}
-        document.getElementById('off-results').style.display='block';
-        document.getElementById('off-results-label').textContent='Produs găsit';
-        renderResults([data.product],false);
-      })
-      .catch(function(){document.getElementById('off-loading').style.display='none';showToast('Eroare barcode','error');});
-  });
-
-  function importProduct(product,btn){
-    btn.textContent='...';btn.disabled=true;
-    fetch('/api/off/import/',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},
-      body:JSON.stringify(product)
-    })
-    .then(function(r){return r.json();})
-    .then(function(data){
-      if(data.success){
-        btn.className='off-import-btn imported';
-        btn.textContent=data.created?'✓ Importat':'✓ Există deja';
-        if(data.created){
-          showToast('"'+data.food_name+'" adăugat!','success');
-          var tbody=document.querySelector('#foods-table tbody');
-          if(tbody){
-            var tr=document.createElement('tr');
-            tr.innerHTML='<td><strong>'+escHtml(data.food_name)+'</strong></td>'+
-              '<td><span class="badge badge-accent" style="font-size:10px">OFF</span></td>'+
-              '<td style="color:var(--accent);font-weight:600">'+data.kcal+'</td>'+
-              '<td style="color:var(--color-protein)">'+data.protein+'g</td>'+
-              '<td style="color:var(--color-carbs)">'+data.carbs+'g</td>'+
-              '<td style="color:var(--color-fat)">'+data.fat+'g</td>'+
-              '<td><span style="font-size:10px;color:var(--text-muted)">🌍 OFF</span></td>';
-            tbody.insertBefore(tr,tbody.firstChild);
-          }
-        }else{showToast('"'+data.food_name+'" există deja.','success');}
-      }
-    })
-    .catch(function(){btn.textContent='✕ Eroare';btn.disabled=false;showToast('Eroare import','error');});
-  }
-
-  document.getElementById('food-search').addEventListener('input',function(){
-    var q=this.value.toLowerCase();
-    document.querySelectorAll('#foods-table tbody tr').forEach(function(row){
-      row.style.display=row.textContent.toLowerCase().includes(q)?'':'none';
-    });
-  });
-})();
-</script>
-{% endblock %}
+  <div class="table-wrap">
+    <table class="simple-table">
+      <thead>
+        <tr>
+          <th>Nume</th>
+          <th>Categorie</th>
+          <th>Kcal / 100g</th>
+          <th>Proteine</th>
+          <th>Carbs</th>
+          <th>Grăsimi</th>
+          <th>Fibre</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for food in foods %}
+        <tr>
+          <td>
+            <strong>{{ food.name }}</strong>
+            {% if food.is_custom %}
+              <div class="card-subtitle">aliment personalizat</div>
+            {% endif %}
+          </td>
+          <td>{{ food.get_category_display|default:food.category }}</td>
+          <td>{{ food.kcal_per_100g|floatformat:0 }}</td>
+          <td>{{ food.protein_per_100g|floatformat:1 }} g</td>
+          <td>{{ food.carbs_per_100g|floatformat:1 }} g</td>
+          <td>{{ food.fat_per_100g|floatformat:1 }} g</td>
+          <td>{{ food.fiber_per_100g|floatformat:1 }} g</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% else %}
+<section class="card">
+  <div class="empty-state">
+    <div class="empty-icon">🥗</div>
+    <h3>Nu există alimente afișate</h3>
+    <p>Caută alt termen sau adaugă primul aliment personalizat în baza ta.</p>
+    <div class="page-actions" style="justify-content:center;">
+      <a href="{% url 'food_create' %}" class="btn btn-primary">Adaugă aliment</a>
+    </div>
+  </div>
+</section>
+{% endif %}
 {% endblock %}

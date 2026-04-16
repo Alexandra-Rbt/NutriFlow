@@ -1,17 +1,20 @@
 import os
 from pathlib import Path
+
 from dotenv import load_dotenv
 
 load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Securitate
-SECRET_KEY = os.getenv('SECRET_KEY')
+
+# --- SECURITATE ---
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-dev-key-change-me')
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
 ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
-# Aplicatii
+
+# --- APLICAȚII ---
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -19,11 +22,15 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
     'tracker',
+
     'crispy_forms',
     'crispy_bootstrap5',
 ]
 
+
+# --- MIDDLEWARE ---
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -34,8 +41,13 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-ROOT_URLCONF = 'nutriflow.urls'
 
+# --- URLS / WSGI ---
+ROOT_URLCONF = 'nutriflow.urls'
+WSGI_APPLICATION = 'nutriflow.wsgi.application'
+
+
+# --- TEMPLATES ---
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -53,9 +65,8 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'nutriflow.wsgi.application'
 
-# Baza de date
+# --- BAZA DE DATE ---
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
@@ -68,16 +79,30 @@ DATABASES = {
             'charset': 'utf8mb4',
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
         },
+        'TEST': {
+            'CHARSET': 'utf8mb4',
+            'COLLATION': 'utf8mb4_unicode_ci',
+        },
     }
 }
 
-# Validare
+
+# --- VALIDARE PAROLE ---
 AUTH_PASSWORD_VALIDATORS = [
-    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
+    {
+        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+    },
 ]
+
 
 # --- LOCALIZARE ---
 LANGUAGE_CODE = 'ro'
@@ -85,20 +110,27 @@ TIME_ZONE = 'Europe/Bucharest'
 USE_I18N = True
 USE_TZ = True
 
-# --- FIȘIERE STATICE ȘI MEDIA ---
+
+# --- STATIC / MEDIA ---
 STATIC_URL = '/static/'
-STATICFILES_DIRS = [BASE_DIR / 'tracker' / 'static']
+STATICFILES_DIRS = [
+    BASE_DIR / 'tracker' / 'static',
+]
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
+
+# --- DJANGO DEFAULTS ---
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# --- RUTE LOGIN ---
+
+# --- AUTH REDIRECTS ---
 LOGIN_URL = '/login/'
-LOGIN_REDIRECT_URL = '/dashboard/'
+LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/login/'
+
 
 # --- CRISPY FORMS ---
 CRISPY_ALLOWED_TEMPLATE_PACKS = 'bootstrap5'

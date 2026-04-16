@@ -1,83 +1,166 @@
 {% extends 'base.html' %}
+
 {% block title %}{{ recipe.name }} — NutriFlow{% endblock %}
+{% block page_title %}{{ recipe.name }}{% endblock %}
+{% block page_subtitle %}Vezi ingredientele, valorile nutriționale și adaugă rețeta direct în planner.{% endblock %}
 
 {% block content %}
-<div class="recipe-detail-page">
-  <section class="nf-card recipe-detail-hero">
-    <div class="recipe-detail-media">
-      {% if recipe.image %}
-        <img src="{{ recipe.image.url }}" alt="{{ recipe.name }}" width="1200" height="800" loading="lazy">
-      {% else %}
-        <div class="recipe-card-placeholder recipe-detail-placeholder">🍽️</div>
-      {% endif %}
-    </div>
-
-    <div class="recipe-detail-content">
-      <p class="nf-eyebrow">Detalii rețetă</p>
-      <h1>{{ recipe.name }}</h1>
-      {% if recipe.description %}
-        <p class="recipe-detail-description">{{ recipe.description }}</p>
-      {% endif %}
-
-      <div class="recipe-detail-metrics">
-        <div class="metric-box">
-          <span>Kcal total</span>
-          <strong>{{ recipe.total_kcal|floatformat:1 }}</strong>
-        </div>
-        <div class="metric-box">
-          <span>Kcal/porție</span>
-          <strong>{{ recipe.kcal_per_serving|floatformat:1 }}</strong>
-        </div>
-        <div class="metric-box">
-          <span>Proteine</span>
-          <strong>{{ recipe.total_protein|floatformat:1 }}g</strong>
-        </div>
-        <div class="metric-box">
-          <span>Carbs</span>
-          <strong>{{ recipe.total_carbs|floatformat:1 }}g</strong>
-        </div>
-        <div class="metric-box">
-          <span>Grăsimi</span>
-          <strong>{{ recipe.total_fat|floatformat:1 }}g</strong>
-        </div>
-        <div class="metric-box">
-          <span>Porții</span>
-          <strong>{{ recipe.servings }}</strong>
-        </div>
+<section class="grid-2">
+  <article class="card">
+    <div class="card-header">
+      <div>
+        <h2 class="card-title">{{ recipe.name }}</h2>
+        <p class="card-subtitle">
+          {{ recipe.servings }} porții · creată la {{ recipe.created_at|date:"d M Y" }}
+        </p>
       </div>
 
       <div class="recipe-actions">
-        <a href="{% url 'recipe_edit' recipe.pk %}" class="btn btn-primary">Editează</a>
-        <a href="{% url 'recipes' %}" class="btn btn-secondary">Înapoi</a>
+        <a href="{% url 'recipe_edit' recipe.pk %}" class="btn btn-secondary btn-sm">Editează</a>
+        <a href="{% url 'recipes' %}" class="btn btn-ghost btn-sm">Înapoi</a>
       </div>
     </div>
-  </section>
 
-  <section class="recipe-detail-grid">
-    <article class="nf-card">
-      <h2>Ingrediente</h2>
-      <ul class="ingredient-list">
-        {% for ing in recipe.ingredients.all %}
-          <li>
-            <span>{{ ing.name|default:ing.food.name }}</span>
-            <strong>{{ ing.grams }} g</strong>
-          </li>
-        {% empty %}
-          <li>Nu există ingrediente salvate.</li>
-        {% endfor %}
-      </ul>
-    </article>
-
-    <article class="nf-card">
-      <h2>Instrucțiuni</h2>
-      <div class="recipe-instructions">
-        {% if recipe.instructions %}
-          {{ recipe.instructions|linebreaks }}
-        {% else %}
-          <p>Nu ai adăugat încă instrucțiuni pentru această rețetă.</p>
-        {% endif %}
+    {% if recipe.image %}
+      <div style="margin-bottom:20px;border-radius:24px;overflow:hidden;border:1px solid var(--border);">
+        <img src="{{ recipe.image.url }}" alt="{{ recipe.name }}" style="width:100%;height:320px;object-fit:cover;">
       </div>
-    </article>
-  </section>
-</div>
+    {% endif %}
+
+    {% if recipe.description %}
+      <div class="surface-card" style="padding:20px;margin-bottom:18px;">
+        <h3 class="section-title">Descriere</h3>
+        <p class="section-copy" style="margin-bottom:0;">{{ recipe.description }}</p>
+      </div>
+    {% endif %}
+
+    {% if recipe.instructions %}
+      <div class="surface-card" style="padding:20px;">
+        <h3 class="section-title">Instrucțiuni</h3>
+        <div class="section-copy" style="white-space:pre-line;margin-bottom:0;">
+          {{ recipe.instructions }}
+        </div>
+      </div>
+    {% endif %}
+  </article>
+
+  <article class="card">
+    <div class="card-header">
+      <div>
+        <h2 class="card-title">Nutriție și planificare</h2>
+        <p class="card-subtitle">Date rapide pentru o porție și acțiuni utile.</p>
+      </div>
+    </div>
+
+    <div class="grid-2" style="margin-bottom:18px;">
+      <div class="surface-card" style="padding:18px;">
+        <span class="stat-label">Calorii / porție</span>
+        <div class="stat-value" style="font-size:1.5rem;">
+          <span>{{ recipe.kcal_per_serving|floatformat:0 }}</span>
+        </div>
+      </div>
+
+      <div class="surface-card" style="padding:18px;">
+        <span class="stat-label">Proteine / porție</span>
+        <div class="stat-value" style="font-size:1.5rem;">
+          <span>{{ recipe.protein_per_serving|floatformat:0 }}g</span>
+        </div>
+      </div>
+
+      <div class="surface-card" style="padding:18px;">
+        <span class="stat-label">Carbohidrați / porție</span>
+        <div class="stat-value" style="font-size:1.5rem;">
+          <span>{{ recipe.carbs_per_serving|floatformat:0 }}g</span>
+        </div>
+      </div>
+
+      <div class="surface-card" style="padding:18px;">
+        <span class="stat-label">Grăsimi / porție</span>
+        <div class="stat-value" style="font-size:1.5rem;">
+          <span>{{ recipe.fat_per_serving|floatformat:0 }}g</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="surface-card" style="padding:20px;margin-bottom:18px;">
+      <h3 class="section-title">Adaugă în planner</h3>
+      <p class="section-copy">Trimite rețeta direct într-o zi și un tip de masă.</p>
+
+      <form method="post" action="{% url 'recipe_add_to_planner' recipe.pk %}" class="form-grid">
+        {% csrf_token %}
+
+        <div class="form-grid cols-2">
+          <div class="field-group">
+            <label for="{{ planner_form.date.id_for_label }}">Data</label>
+            {{ planner_form.date }}
+          </div>
+
+          <div class="field-group">
+            <label for="{{ planner_form.meal_type.id_for_label }}">Tip masă</label>
+            {{ planner_form.meal_type }}
+          </div>
+
+          <div class="field-group">
+            <label for="{{ planner_form.servings.id_for_label }}">Porții</label>
+            {{ planner_form.servings }}
+          </div>
+
+          <div class="field-group">
+            <label>Status</label>
+            <div class="surface-card" style="padding:14px;min-height:48px;display:flex;align-items:center;">
+              {{ planner_form.is_completed }}
+              <span style="margin-left:10px;color:var(--text-muted);">Marchează direct ca realizată</span>
+            </div>
+          </div>
+
+          <div class="field-group" style="grid-column:1 / -1;">
+            <label for="{{ planner_form.notes.id_for_label }}">Observații</label>
+            {{ planner_form.notes }}
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Adaugă în planner</button>
+      </form>
+    </div>
+
+    <div class="surface-card" style="padding:20px;">
+      <h3 class="section-title">Ingrediente</h3>
+
+      {% if recipe.ingredients.all %}
+        <div class="table-wrap">
+          <table class="simple-table">
+            <thead>
+              <tr>
+                <th>Ingredient</th>
+                <th>Cantitate</th>
+                <th>Aliment asociat</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for ingredient in recipe.ingredients.all %}
+              <tr>
+                <td>{{ ingredient.name }}</td>
+                <td>{{ ingredient.grams }} g</td>
+                <td>
+                  {% if ingredient.food %}
+                    {{ ingredient.food.name }}
+                  {% else %}
+                    —
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="empty-state" style="padding:20px 0 0;">
+          <div class="empty-icon">🥕</div>
+          <h3>Nu există ingrediente</h3>
+          <p>Adaugă ingrediente în editorul rețetei pentru a putea genera lista de cumpărături corect.</p>
+        </div>
+      {% endif %}
+    </div>
+  </article>
+</section>
 {% endblock %}

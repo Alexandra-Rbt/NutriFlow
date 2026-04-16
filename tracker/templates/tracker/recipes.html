@@ -1,140 +1,113 @@
 {% extends 'base.html' %}
+
 {% block title %}Rețete — NutriFlow{% endblock %}
+{% block page_title %}Rețete{% endblock %}
+{% block page_subtitle %}Creează, caută și gestionează rețetele pe care le vei folosi în planner.{% endblock %}
 
 {% block content %}
-<div class="recipes-page">
-  <section class="recipes-hero nf-card">
+<section class="card">
+  <div class="card-header">
     <div>
-      <p class="nf-eyebrow">NutriFlow Recipes</p>
-      <h1 class="recipes-title">Rețetele mele</h1>
-      <p class="recipes-subtitle">
-        Creează, organizează și urmărește rețetele tale cu valori nutriționale calculate automat.
+      <h2 class="card-title">Biblioteca ta de rețete</h2>
+      <p class="card-subtitle">Păstrează totul organizat și pregătit pentru planificare.</p>
+    </div>
+
+    <div class="page-actions">
+      <a href="{% url 'recipe_create' %}" class="btn btn-primary">Rețetă nouă</a>
+    </div>
+  </div>
+
+  <form method="get" class="form-grid">
+    <div class="form-grid cols-2" style="align-items:end;">
+      <div class="field-group">
+        <label for="q">Caută rețetă</label>
+        <input type="text" name="q" id="q" value="{{ query }}" placeholder="Ex: pui cu orez, ovăz, paste...">
+      </div>
+
+      <div class="page-actions">
+        <button type="submit" class="btn btn-secondary">Caută</button>
+        <a href="{% url 'recipes' %}" class="btn btn-ghost">Resetează</a>
+      </div>
+    </div>
+  </form>
+</section>
+
+{% if recipes %}
+<section class="grid-3">
+  {% for recipe in recipes %}
+  <article class="card">
+    <div class="card-header">
+      <div>
+        <h3 class="card-title">{{ recipe.name }}</h3>
+        <p class="card-subtitle">
+          {{ recipe.created_at|date:"d M Y" }}
+        </p>
+      </div>
+
+      <span class="badge">{{ recipe.servings }} porții</span>
+    </div>
+
+    {% if recipe.image %}
+      <div style="margin-bottom:16px;border-radius:20px;overflow:hidden;border:1px solid var(--border);">
+        <img src="{{ recipe.image.url }}" alt="{{ recipe.name }}" style="width:100%;height:220px;object-fit:cover;">
+      </div>
+    {% endif %}
+
+    {% if recipe.description %}
+      <p class="section-copy">
+        {{ recipe.description|truncatechars:140 }}
       </p>
-    </div>
+    {% else %}
+      <p class="section-copy">
+        Fără descriere adăugată momentan.
+      </p>
+    {% endif %}
 
-    <div class="recipes-hero-actions">
-      <a href="{% url 'recipe_create' %}" class="btn btn-primary">+ Rețetă nouă</a>
-    </div>
-  </section>
-
-  <section class="recipes-stats">
-    <div class="nf-stat-card">
-      <span>Total rețete</span>
-      <strong>{{ recipe_count }}</strong>
-    </div>
-    <div class="nf-stat-card">
-      <span>Kcal totale</span>
-      <strong>{{ total_kcal|floatformat:0 }}</strong>
-    </div>
-    <div class="nf-stat-card">
-      <span>Proteine</span>
-      <strong>{{ total_protein|floatformat:1 }}g</strong>
-    </div>
-    <div class="nf-stat-card">
-      <span>Carbohidrați</span>
-      <strong>{{ total_carbs|floatformat:1 }}g</strong>
-    </div>
-  </section>
-
-  <section class="nf-card recipes-toolbar">
-    <input type="search" id="recipeSearch" class="nf-input" placeholder="Caută după nume sau descriere...">
-  </section>
-
-  {% if recipes %}
-    <section class="recipes-grid" id="recipesGrid">
-      {% for recipe in recipes %}
-      <article class="nf-card recipe-card"
-               data-name="{{ recipe.name|lower }}"
-               data-description="{{ recipe.description|default:''|lower }}">
-        <a href="{% url 'recipe_detail' recipe.pk %}" class="recipe-card-media">
-          {% if recipe.image %}
-            <img src="{{ recipe.image.url }}" alt="{{ recipe.name }}" width="800" height="500" loading="lazy">
-          {% else %}
-            <div class="recipe-card-placeholder">🍽️</div>
-          {% endif %}
-        </a>
-
-        <div class="recipe-card-body">
-          <div class="recipe-card-top">
-            <div>
-              <h2 class="recipe-card-title">
-                <a href="{% url 'recipe_detail' recipe.pk %}">{{ recipe.name }}</a>
-              </h2>
-              <p class="recipe-card-desc">
-                {{ recipe.description|default:"Rețetă salvată în NutriFlow."|truncatechars:110 }}
-              </p>
-            </div>
-          </div>
-
-          <div class="recipe-metrics">
-            <div class="metric-box">
-              <span>Kcal/porție</span>
-              <strong>{{ recipe.kcal_per_serving|floatformat:1 }}</strong>
-            </div>
-            <div class="metric-box">
-              <span>Proteine</span>
-              <strong>{{ recipe.total_protein|floatformat:1 }}g</strong>
-            </div>
-            <div class="metric-box">
-              <span>Carbs</span>
-              <strong>{{ recipe.total_carbs|floatformat:1 }}g</strong>
-            </div>
-            <div class="metric-box">
-              <span>Grăsimi</span>
-              <strong>{{ recipe.total_fat|floatformat:1 }}g</strong>
-            </div>
-          </div>
-
-          <div class="recipe-meta">
-            <span>{{ recipe.ingredient_count|default:recipe.ingredients.count }} ingrediente</span>
-            <span>{{ recipe.servings }} porții</span>
-            {% if recipe.prep_time_minutes %}
-              <span>{{ recipe.prep_time_minutes }} min</span>
-            {% endif %}
-          </div>
-
-          <div class="recipe-actions">
-            <a href="{% url 'recipe_detail' recipe.pk %}" class="btn btn-secondary btn-sm">Detalii</a>
-            <a href="{% url 'recipe_edit' recipe.pk %}" class="btn btn-secondary btn-sm">Editează</a>
-
-            <form method="post" action="{% url 'recipe_delete' recipe.pk %}">
-              {% csrf_token %}
-              <button type="submit"
-                      class="btn btn-danger btn-sm"
-                      onclick="return confirm('Ștergi rețeta {{ recipe.name }}?')">
-                Șterge
-              </button>
-            </form>
-          </div>
+    <div class="grid-3" style="margin-bottom:18px;">
+      <div class="surface-card" style="padding:14px;">
+        <span class="stat-label">Kcal</span>
+        <div class="stat-value" style="font-size:1.1rem;">
+          <span>{{ recipe.kcal_per_serving|floatformat:0 }}</span>
         </div>
-      </article>
-      {% endfor %}
-    </section>
-  {% else %}
-    <section class="nf-card empty-recipes">
-      <div class="empty-icon">🍳</div>
-      <h2>Nu ai rețete salvate încă</h2>
-      <p>Creează prima ta rețetă și începe să-ți organizezi mesele mai bine.</p>
-      <a href="{% url 'recipe_create' %}" class="btn btn-primary">+ Rețetă nouă</a>
-    </section>
-  {% endif %}
-</div>
+      </div>
 
-<script>
-  (function () {
-    const searchInput = document.getElementById('recipeSearch');
-    const cards = document.querySelectorAll('.recipe-card');
+      <div class="surface-card" style="padding:14px;">
+        <span class="stat-label">Proteină</span>
+        <div class="stat-value" style="font-size:1.1rem;">
+          <span>{{ recipe.protein_per_serving|floatformat:0 }}g</span>
+        </div>
+      </div>
 
-    if (!searchInput || !cards.length) return;
+      <div class="surface-card" style="padding:14px;">
+        <span class="stat-label">Carbs</span>
+        <div class="stat-value" style="font-size:1.1rem;">
+          <span>{{ recipe.carbs_per_serving|floatformat:0 }}g</span>
+        </div>
+      </div>
+    </div>
 
-    searchInput.addEventListener('input', function () {
-      const query = this.value.trim().toLowerCase();
+    <div class="recipe-actions">
+      <a href="{% url 'recipe_detail' recipe.pk %}" class="btn btn-primary btn-sm">Deschide</a>
+      <a href="{% url 'recipe_edit' recipe.pk %}" class="btn btn-secondary btn-sm">Editează</a>
 
-      cards.forEach(card => {
-        const haystack = `${card.dataset.name} ${card.dataset.description}`;
-        card.style.display = haystack.includes(query) ? '' : 'none';
-      });
-    });
-  })();
-</script>
+      <form method="post" action="{% url 'recipe_delete' recipe.pk %}" onsubmit="return confirm('Sigur vrei să ștergi această rețetă?');">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger btn-sm">Șterge</button>
+      </form>
+    </div>
+  </article>
+  {% endfor %}
+</section>
+{% else %}
+<section class="card">
+  <div class="empty-state">
+    <div class="empty-icon">🍳</div>
+    <h3>Nu ai încă rețete</h3>
+    <p>Adaugă prima ta rețetă ca să o poți planifica în săptămână și transforma în listă de cumpărături.</p>
+    <div class="page-actions" style="justify-content:center;">
+      <a href="{% url 'recipe_create' %}" class="btn btn-primary">Creează prima rețetă</a>
+    </div>
+  </div>
+</section>
+{% endif %}
 {% endblock %}

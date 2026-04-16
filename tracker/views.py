@@ -1,485 +1,618 @@
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth import login, logout, authenticate
-from django.contrib.auth.decorators import login_required
+from collections import defaultdict
+from datetime import timedelta
+
 from django.contrib import messages
-from django.http import JsonResponse
-from django.db.models import Count,Sum
+from django.contrib.auth import login, logout
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import User
+from django.db.models import Sum
+from django.http import JsonResponse, HttpResponseForbidden
+from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
-from datetime import timedelta, date
-import json
 
-
-from .models import UserProfile, Food, FoodLog, BodyWeight, Recipe, RecipeIngredient
 from .forms import (
-    RegisterForm, LoginForm, UserProfileForm, ThemeForm,
-    FoodLogForm, BodyWeightForm, RecipeForm, RecipeIngredientForm, CustomFoodForm
+    RegisterForm,
+    LoginForm,
+    UserProfileForm,
+    ThemeForm,
+    FoodLogForm,
+    BodyWeightForm,
+    RecipeForm,
+    RecipeIngredientForm,
+    CustomFoodForm,
+    MealPlanForm,
+    ShoppingListForm,
+    ShoppingListItemForm,
 )
-from django.forms import inlineformset_factory
-
-
-
-RecipeIngredientFormSet = inlineformset_factory(
+from .models import (
+    UserProfile,
+    Food,
+    FoodLog,
+    BodyWeight,
     Recipe,
     RecipeIngredient,
-    fields=('name', 'grams'),
-    extra=1,
-    can_delete=True
+    MealPlan,
+    ShoppingList,
+    ShoppingListItem,
+)
+from .openfoodfacts_service import (
+    search_foods as off_search_products,
+    get_product_by_barcode,
 )
 
-# ─────────────────────────────────────────
-#  HELPER — obtine sau creeaza profilul
-# ─────────────────────────────────────────
+
 def get_or_create_profile(user):
     profile, _ = UserProfile.objects.get_or_create(user=user)
     return profile
 
 
-# ─────────────────────────────────────────
-#  AUTENTIFICARE
-# ─────────────────────────────────────────
+def get_week_range(base_date=None):
+    if base_date is None:
+        base_date = timezone.localdate()
+    start = base_date - timedelta(days=base_date.weekday())
+    end = start + timedelta(days=6)
+    return start, end
+
+
+def build_planner_matrix(user, start_date, end_date):
+    plans = (
+        MealPlan.objects
+        .filter(user=user, date__range=[start_date, end_date])
+        .select_related('recipe')
+        .order_by('date', 'meal_type', 'created_at')
+    )
+
+    meal_order = ['breakfast', 'lunch', 'dinner', 'snack']
+    days = []
+    current = start_date
+    while current <= end_date:
+        day_items = {meal: [] for meal in meal_order}
+        for item in plans:
+            if item.date == current:
+                day_items[item.meal_type].append(item)
+        days.append({
+            'date': current,
+            'label': current.strftime('%A'),
+            'items': day_items,
+        })
+        current += timedelta(days=1)
+    return days
+
+
+def calculate_daily_totals(user, selected_date):
+    totals = (
+        FoodLog.objects
+        .filter(user=user, date=selected_date)
+        .aggregate(
+            kcal=Sum('kcal'),
+            protein=Sum('protein_g'),
+            carbs=Sum('carbs_g'),
+            fat=Sum('fat_g'),
+            fiber=Sum('fiber_g'),
+        )
+    )
+    return {
+        'kcal': float(totals['kcal'] or 0),
+        'protein': float(totals['protein'] or 0),
+        'carbs': float(totals['carbs'] or 0),
+        'fat': float(totals['fat'] or 0),
+        'fiber': float(totals['fiber'] or 0),
+    }
+
+
+def calculate_weekly_weight_stats(user):
+    weights = BodyWeight.objects.filter(user=user).order_by('-date')[:8]
+    weights = list(weights)
+    latest = weights[0] if weights else None
+    previous = weights[-1] if len(weights) > 1 else None
+    change = None
+    if latest and previous:
+        change = round(float(latest.weight_kg) - float(previous.weight_kg), 2)
+    return {
+        'latest': latest,
+        'change': change,
+        'entries': weights,
+    }
+
+
+def aggregate_shopping_items_from_plans(user, start_date, end_date):
+    plans = (
+        MealPlan.objects
+        .filter(user=user, date__range=[start_date, end_date])
+        .select_related('recipe')
+        .prefetch_related('recipe__ingredients__food')
+    )
+
+    aggregated = {}
+
+    for plan in plans:
+        multiplier = float(plan.servings or 1)
+
+        for ingredient in plan.recipe.ingredients.all():
+            item_name = ingredient.food.name if ingredient.food else ingredient.name
+            key = (
+                ingredient.food_id if ingredient.food_id else f'name:{item_name.strip().lower()}',
+                'g'
+            )
+
+            quantity = float(ingredient.grams) * multiplier
+
+            if key not in aggregated:
+                aggregated[key] = {
+                    'food': ingredient.food,
+                    'name': item_name,
+                    'quantity': 0,
+                    'unit': 'g',
+                    'source_recipe': plan.recipe,
+                }
+
+            aggregated[key]['quantity'] += quantity
+
+    return list(aggregated.values())
+
+
+def dashboard_view(request):
+    if not request.user.is_authenticated:
+        return redirect('login')
+
+    profile = get_or_create_profile(request.user)
+    today = timezone.localdate()
+
+    todays_logs = (
+        FoodLog.objects
+        .filter(user=request.user, date=today)
+        .select_related('food')
+        .order_by('meal_type', '-created_at')
+    )
+    todays_totals = calculate_daily_totals(request.user, today)
+    weekly_weight = calculate_weekly_weight_stats(request.user)
+
+    upcoming_plans = (
+        MealPlan.objects
+        .filter(user=request.user, date__gte=today)
+        .select_related('recipe')
+        .order_by('date', 'meal_type')[:6]
+    )
+
+    recent_recipes = Recipe.objects.filter(user=request.user).order_by('-created_at')[:4]
+
+    context = {
+        'profile': profile,
+        'today': today,
+        'todays_logs': todays_logs,
+        'todays_totals': todays_totals,
+        'weekly_weight': weekly_weight,
+        'upcoming_plans': upcoming_plans,
+        'recent_recipes': recent_recipes,
+    }
+    return render(request, 'tracker/dashboard.html', context)
+
+
 def register_view(request):
     if request.user.is_authenticated:
         return redirect('dashboard')
-    if request.method == 'POST':
-        form = RegisterForm(request.POST)
-        if form.is_valid():
-            user = form.save()
-            get_or_create_profile(user)
-            login(request, user)
-            messages.success(request, f'Bine ai venit, {user.first_name}! Contul tau a fost creat.')
-            return redirect('dashboard')
-    else:
-        form = RegisterForm()
+
+    form = RegisterForm(request.POST or None)
+    if request.method == 'POST' and form.is_valid():
+        user = form.save(commit=False)
+        user.email = form.cleaned_data['email']
+        user.first_name = form.cleaned_data['first_name']
+        user.last_name = form.cleaned_data['last_name']
+        user.save()
+        UserProfile.objects.get_or_create(user=user)
+        messages.success(request, 'Contul a fost creat. Te poți autentifica acum.')
+        return redirect('login')
+
     return render(request, 'tracker/auth/register.html', {'form': form})
 
 
 def login_view(request):
     if request.user.is_authenticated:
         return redirect('dashboard')
-    if request.method == 'POST':
-        form = LoginForm(request, data=request.POST)
-        if form.is_valid():
-            user = form.get_user()
-            login(request, user)
-            return redirect('dashboard')
-        else:
-            messages.error(request, 'Username sau parola incorecta.')
-    else:
-        form = LoginForm()
+
+    form = LoginForm(request, data=request.POST or None)
+    if request.method == 'POST' and form.is_valid():
+        login(request, form.get_user())
+        messages.success(request, 'Bine ai revenit.')
+        return redirect('dashboard')
+
     return render(request, 'tracker/auth/login.html', {'form': form})
 
 
+@login_required
 def logout_view(request):
     logout(request)
     return redirect('login')
 
 
-#  DASHBOARD
-@login_required
-def dashboard_view(request):
-    profile = get_or_create_profile(request.user)
-    today   = date.today()
-
-    # Jurnalul de azi
-    logs_today = FoodLog.objects.filter(user=request.user, date=today).select_related('food')
-
-    # Totaluri zilnice
-    totals = logs_today.aggregate(
-        total_kcal    = Sum('kcal'),
-        total_protein = Sum('protein_g'),
-        total_carbs   = Sum('carbs_g'),
-        total_fat     = Sum('fat_g'),
-    )
-    total_kcal    = float(totals['total_kcal']    or 0)
-    total_protein = float(totals['total_protein'] or 0)
-    total_carbs   = float(totals['total_carbs']   or 0)
-    total_fat     = float(totals['total_fat']     or 0)
-
-    # Procentaje din obiectiv
-    def pct(val, target):
-        return min(round(val / target * 100) if target else 0, 100)
-
-    # Grupe de mese
-    meal_groups = {}
-    for meal_key, meal_label in FoodLog.MEAL_CHOICES:
-        meal_logs = logs_today.filter(meal_type=meal_key)
-        if meal_logs.exists():
-            meal_groups[meal_label] = meal_logs
-
-    # Ultima greutate inregistrata
-    last_weight = BodyWeight.objects.filter(user=request.user).first()
-
-    # Grafic calorii ultmele 7 zile
-    week_data = []
-    for i in range(6, -1, -1):
-        day = today - timedelta(days=i)
-        day_kcal = FoodLog.objects.filter(user=request.user, date=day).aggregate(
-            s=Sum('kcal'))['s'] or 0
-        week_data.append({'date': day.strftime('%d/%m'), 'kcal': float(day_kcal)})
-
-    context = {
-        'profile':        profile,
-        'today':          today,
-        'logs_today':     logs_today,
-        'meal_groups':    meal_groups,
-        'total_kcal':     round(total_kcal, 1),
-        'total_protein':  round(total_protein, 1),
-        'total_carbs':    round(total_carbs, 1),
-        'total_fat':      round(total_fat, 1),
-        'pct_kcal':       pct(total_kcal, profile.daily_kcal_target),
-        'pct_protein':    pct(total_protein, profile.protein_target_g),
-        'pct_carbs':      pct(total_carbs, profile.carbs_target_g),
-        'pct_fat':        pct(total_fat, profile.fat_target_g),
-        'last_weight':    last_weight,
-        'week_data_json': json.dumps(week_data),
-        'log_form':       FoodLogForm(initial={'date': today}),
-    }
-    return render(request, 'tracker/dashboard.html', context)
-
-
-#  JURNAL ALIMENTAR
-@login_required
-def log_add(request):
-    if request.method == 'POST':
-        form = FoodLogForm(request.POST)
-        if form.is_valid():
-            log = form.save(commit=False)
-            log.user = request.user
-            log.save()
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return JsonResponse({
-                    'success': True,
-                    'kcal':    float(log.kcal),
-                    'protein': float(log.protein_g),
-                    'carbs':   float(log.carbs_g),
-                    'fat':     float(log.fat_g),
-                })
-            messages.success(request, f'{log.food.name} adaugat in jurnal.')
-        else:
-            messages.error(request, 'Eroare la adaugare. Verifica campurile.')
-    return redirect('dashboard')
-
-
-@login_required
-def log_delete(request, pk):
-    log = get_object_or_404(FoodLog, pk=pk, user=request.user)
-    food_name = log.food.name
-    log.delete()
-    messages.success(request, f'{food_name} sters din jurnal.')
-    return redirect('dashboard')
-
-
 @login_required
 def journal_view(request):
-    """Jurnal complet cu calendar saptamanal si filtrare dupa data."""
-    filter_date = request.GET.get('date', str(date.today()))
-    try:
-        filter_date = date.fromisoformat(filter_date)
-    except ValueError:
-        filter_date = date.today()
-
-    # Calendar saptamanal — luni pana duminica din saptamana curenta
-    today = date.today()
-    # Gaseste lunea saptamanii pentru data selectata
-    week_start = filter_date - timedelta(days=filter_date.weekday())
-    week_days = [week_start + timedelta(days=i) for i in range(7)]
-
-    # Pentru fiecare zi din saptamana, verifica daca are intrari
-    days_with_logs = set(
-        FoodLog.objects.filter(
-            user=request.user,
-            date__in=week_days
-        ).values_list('date', flat=True).distinct()
-    )
-
-    # Calorii per zi din saptamana (pentru inelele de progres)
-    days_kcal = {}
-    for d in week_days:
-        kcal = FoodLog.objects.filter(
-            user=request.user, date=d
-        ).aggregate(s=Sum('kcal'))['s'] or 0
-        days_kcal[d] = float(kcal)
-
-    logs = FoodLog.objects.filter(
-        user=request.user, date=filter_date
-    ).select_related('food').order_by('meal_type', 'created_at')
-
-    totals = logs.aggregate(
-        kcal=Sum('kcal'), protein=Sum('protein_g'),
-        carbs=Sum('carbs_g'), fat=Sum('fat_g'),
-    )
-    totals = {k: round(float(v or 0), 1) for k, v in totals.items()}
-
-    # Grupare pe mese
-    meal_groups = {}
-    for meal_key, meal_label in FoodLog.MEAL_CHOICES:
-        meal_logs = logs.filter(meal_type=meal_key)
-        meal_kcal = meal_logs.aggregate(s=Sum('kcal'))['s'] or 0
-        if meal_logs.exists():
-            meal_groups[meal_key] = {
-                'label': meal_label,
-                'logs':  meal_logs,
-                'kcal':  round(float(meal_kcal), 1),
-            }
-
     profile = get_or_create_profile(request.user)
 
-    # Ziua precedenta si urmatoare pentru navigare
-    prev_date = filter_date - timedelta(days=1)
-    next_date = filter_date + timedelta(days=1)
+    date_param = request.GET.get('date')
+    if date_param:
+        try:
+            selected_date = timezone.datetime.strptime(date_param, '%Y-%m-%d').date()
+        except ValueError:
+            selected_date = timezone.localdate()
+    else:
+        selected_date = timezone.localdate()
 
-    def pct(val, target):
-        return min(round(float(val) / float(target) * 100) if target else 0, 100)
+    if request.method == 'POST':
+        form = FoodLogForm(request.POST)
+        food_id = request.POST.get('food')
+
+        if not food_id:
+            messages.error(request, 'Selectează un aliment din listă.')
+        elif form.is_valid():
+            try:
+                food = Food.objects.get(pk=food_id)
+            except Food.DoesNotExist:
+                messages.error(request, 'Alimentul selectat nu există.')
+            else:
+                food_log = form.save(commit=False)
+                food_log.user = request.user
+                food_log.food = food
+                food_log.date = selected_date
+                food_log.save()
+                messages.success(request, 'Alimentul a fost adăugat în jurnal.')
+                return redirect(f'{request.path}?date={selected_date.isoformat()}')
+    else:
+        form = FoodLogForm()
+
+    logs = (
+        FoodLog.objects
+        .filter(user=request.user, date=selected_date)
+        .select_related('food')
+        .order_by('meal_type', '-created_at')
+    )
+
+    grouped_logs = {
+        'breakfast': [],
+        'lunch': [],
+        'dinner': [],
+        'snack': [],
+    }
+    for log in logs:
+        grouped_logs[log.meal_type].append(log)
+
+    totals = calculate_daily_totals(request.user, selected_date)
+
+    week_start, week_end = get_week_range(selected_date)
+    week_days = []
+    current = week_start
+    while current <= week_end:
+        week_days.append({
+            'date': current,
+            'iso': current.isoformat(),
+            'day_short': current.strftime('%a'),
+            'day_number': current.day,
+            'active': current == selected_date,
+        })
+        current += timedelta(days=1)
 
     return render(request, 'tracker/journal.html', {
-        'logs':           logs,
-        'filter_date':    filter_date,
-        'today':          today,
-        'totals':         totals,
-        'meal_groups':    meal_groups,
-        'form':           FoodLogForm(initial={'date': filter_date, 'meal_type': request.GET.get('meal', 'lunch')}),
-        'profile':        profile,
-        'week_days':      week_days,
-        'week_start':     week_start,
-        'days_with_logs': days_with_logs,
-        'days_kcal':      days_kcal,
-        'prev_date':      prev_date,
-        'next_date':      next_date,
-        'selected_meal':  request.GET.get('meal', ''),
-        'pct_consumed':   pct(totals['kcal'], profile.daily_kcal_target),
-        'pct_protein':    pct(totals['protein'], profile.protein_target_g),
-        'pct_carbs':      pct(totals['carbs'], profile.carbs_target_g),
-        'pct_fat':        pct(totals['fat'], profile.fat_target_g),
+        'profile': profile,
+        'form': form,
+        'logs': logs,
+        'grouped_logs': grouped_logs,
+        'totals': totals,
+        'selected_date': selected_date,
+        'week_days': week_days,
     })
 
-
-#  AJAX — calcul nutritional live
-@login_required
-def nutrition_calc(request):
-    """
-    Preia food_id si grams, returneaza valorile nutritionale calculate.
-    Apelat din JS la schimbarea gramajului in formular.
-    """
-    food_id = request.GET.get('food_id')
-    grams   = request.GET.get('grams', 0)
-    try:
-        food   = Food.objects.get(pk=food_id)
-        grams  = float(grams)
-        result = food.calculate_nutrition(grams)
-        return JsonResponse({'success': True, **result})
-    except (Food.DoesNotExist, ValueError):
-        return JsonResponse({'success': False, 'error': 'Date invalide'})
-
-
-
-#  GREUTATE CORPORALA
 @login_required
 def weight_view(request):
-    if request.method == 'POST':
-        form = BodyWeightForm(request.POST)
-        if form.is_valid():
-            entry = form.save(commit=False)
-            entry.user = request.user
-            try:
-                entry.save()
-                messages.success(request, 'Greutatea a fost salvata.')
-            except Exception:
-                messages.error(request, 'Ai deja o intrare pentru aceasta data.')
-        else:
-            messages.error(request, 'Date invalide.')
+    profile = get_or_create_profile(request.user)
+    form = BodyWeightForm(request.POST or None)
+
+    if request.method == 'POST' and form.is_valid():
+        entry = form.save(commit=False)
+        entry.user = request.user
+        entry.save()
+        messages.success(request, 'Greutatea a fost salvată.')
         return redirect('weight')
 
-    weights = BodyWeight.objects.filter(user=request.user)[:30]
-    chart_data = [
-        {'date': w.date.strftime('%d/%m'), 'kg': float(w.weight_kg)}
-        for w in reversed(list(weights))
-    ]
+    weights = BodyWeight.objects.filter(user=request.user).order_by('-date')
+    stats = calculate_weekly_weight_stats(request.user)
+
     return render(request, 'tracker/weight.html', {
-        'weights':        weights,
-        'form':           BodyWeightForm(initial={'date': date.today()}),
-        'chart_data_json': json.dumps(chart_data),
+        'profile': profile,
+        'form': form,
+        'weights': weights,
+        'stats': stats,
     })
 
-
-@login_required
-def weight_delete(request, pk):
-    entry = get_object_or_404(BodyWeight, pk=pk, user=request.user)
-    entry.delete()
-    messages.success(request, 'Intrare stearsa.')
-    return redirect('weight')
-
-#  RETETE
 
 @login_required
 def recipes_view(request):
-    recipes = (
-        Recipe.objects.filter(user=request.user)
-        .prefetch_related('ingredients__food')
-        .annotate(ingredient_count=Count('ingredients'))
-    )
+    profile = get_or_create_profile(request.user)
+    query = request.GET.get('q', '').strip()
 
-    totals = recipes.aggregate(
-        total_kcal=Sum('total_kcal'),
-        total_protein=Sum('total_protein'),
-        total_carbs=Sum('total_carbs'),
-        total_fat=Sum('total_fat'),
-    )
+    recipes = Recipe.objects.filter(user=request.user).order_by('-created_at')
+    if query:
+        recipes = recipes.filter(name__icontains=query)
 
-    context = {
+    return render(request, 'tracker/recipes.html', {
+        'profile': profile,
         'recipes': recipes,
-        'recipe_count': recipes.count(),
-        'total_kcal': float(totals['total_kcal'] or 0),
-        'total_protein': float(totals['total_protein'] or 0),
-        'total_carbs': float(totals['total_carbs'] or 0),
-        'total_fat': float(totals['total_fat'] or 0),
-    }
-    return render(request, 'tracker/recipes.html', context)
-
-@login_required
-def recipe_edit(request, pk):
-    recipe = get_object_or_404(Recipe, pk=pk, user=request.user)
-
-    if request.method == 'POST':
-        form = RecipeForm(request.POST, request.FILES, instance=recipe)
-        formset = RecipeIngredientFormSet(
-            request.POST,
-            instance=recipe,
-            prefix='ingredients'
-        )
-
-        if form.is_valid() and formset.is_valid():
-            recipe = form.save()
-
-            instances = formset.save(commit=False)
-
-            for obj in formset.deleted_objects:
-                obj.delete()
-
-            for ing in instances:
-                ing.recipe = recipe
-                if not ing.name and ing.food:
-                    ing.name = ing.food.name
-                ing.save()
-
-            recipe.recalculate_totals()
-            messages.success(request, 'Rețeta a fost actualizată.')
-            return redirect('recipe_detail', pk=recipe.pk)
-        else:
-            messages.error(request, 'Te rog verifică datele din formular.')
-    else:
-        form = RecipeForm(instance=recipe)
-        formset = RecipeIngredientFormSet(instance=recipe, prefix='ingredients')
-
-    return render(request, 'tracker/recipe_form.html', {
-        'form': form,
-        'formset': formset,
-        'recipe': recipe,
-        'page_title': 'Editează rețeta',
-        'submit_label': 'Salvează modificările',
-        'is_edit': True,
+        'query': query,
     })
 
 
 @login_required
-def recipe_add_ingredient(request, pk):
-    recipe = get_object_or_404(Recipe, pk=pk, user=request.user)
-    if request.method == 'POST':
-        form = RecipeIngredientForm(request.POST)
-        if form.is_valid():
-            ing        = form.save(commit=False)
-            ing.recipe = recipe
-            ing.save()
-            recipe.recalculate_totals()
-            messages.success(request, f'{ing.food.name} adaugat.')
-    return redirect('recipe_edit', pk=pk)
-
-
-@login_required
-def recipe_delete_ingredient(request, pk, ing_pk):
-    recipe = get_object_or_404(Recipe, pk=pk, user=request.user)
-    ing    = get_object_or_404(RecipeIngredient, pk=ing_pk, recipe=recipe)
-    ing.delete()
-    recipe.recalculate_totals()
-    messages.success(request, 'Ingredient sters.')
-    return redirect('recipe_edit', pk=pk)
-
-
-@login_required
-def recipe_list(request):
-    # Afișează toate rețetele utilizatorului
-    recipes = Recipe.objects.filter(user=request.user)
-    return render(request, 'tracker/recipes.html', {'recipes': recipes})
-
-@login_required
-def recipe_detail(request, pk):
+def recipe_detail_view(request, pk):
+    profile = get_or_create_profile(request.user)
     recipe = get_object_or_404(
         Recipe.objects.prefetch_related('ingredients__food'),
         pk=pk,
         user=request.user
     )
-    return render(request, 'tracker/recipe_detail.html', {'recipe': recipe})
+    planner_form = MealPlanForm(user=request.user, initial={'recipe': recipe, 'date': timezone.localdate()})
 
-@login_required
-def recipe_delete(request, pk):
-    recipe = get_object_or_404(Recipe, pk=pk, user=request.user)
-
-    if request.method == 'POST':
-        recipe_name = recipe.name
-        recipe.delete()
-        messages.success(request, f'Rețeta "{recipe_name}" a fost ștearsă.')
-        return redirect('recipes')
-
-    return redirect('recipe_detail', pk=pk)
-
-@login_required
-def recipe_create(request):
-    if request.method == 'POST':
-        form = RecipeForm(request.POST, request.FILES)
-        formset = RecipeIngredientFormSet(request.POST, prefix='ingredients')
-
-        if form.is_valid() and formset.is_valid():
-            recipe = form.save(commit=False)
-            recipe.user = request.user
-            recipe.save()
-
-            formset.instance = recipe
-            ingredients = formset.save(commit=False)
-
-            for obj in formset.deleted_objects:
-                obj.delete()
-
-            for ing in ingredients:
-                ing.recipe = recipe
-                if not ing.name and ing.food:
-                    ing.name = ing.food.name
-                ing.save()
-
-            recipe.recalculate_totals()
-            messages.success(request, 'Rețetă creată cu succes!')
-            return redirect('recipe_detail', pk=recipe.pk)
-        else:
-            messages.error(request, 'Te rog verifică datele din formular.')
-    else:
-        form = RecipeForm()
-        formset = RecipeIngredientFormSet(prefix='ingredients')
-
-    return render(request, 'tracker/recipe_form.html', {
-        'form': form,
-        'formset': formset,
-        'page_title': 'Adaugă rețetă',
-        'submit_label': 'Salvează rețeta',
-        'is_edit': False,
+    return render(request, 'tracker/recipe_detail.html', {
+        'profile': profile,
+        'recipe': recipe,
+        'planner_form': planner_form,
     })
 
 
+@login_required
+def recipe_create_view(request):
+    profile = get_or_create_profile(request.user)
+    recipe_form = RecipeForm(request.POST or None, request.FILES or None)
 
-#  Setari (inclusiv schimbare tema)
+    if request.method == 'POST' and recipe_form.is_valid():
+        recipe = recipe_form.save(commit=False)
+        recipe.user = request.user
+        recipe.save()
+
+        ingredient_names = request.POST.getlist('ingredient_name[]')
+        ingredient_grams = request.POST.getlist('ingredient_grams[]')
+        ingredient_foods = request.POST.getlist('ingredient_food[]')
+
+        for idx, name in enumerate(ingredient_names):
+            name = (name or '').strip()
+            grams = ingredient_grams[idx] if idx < len(ingredient_grams) else None
+            food_id = ingredient_foods[idx] if idx < len(ingredient_foods) else None
+
+            if not name or not grams:
+                continue
+
+            food = None
+            if food_id:
+                food = Food.objects.filter(pk=food_id).first()
+
+            RecipeIngredient.objects.create(
+                recipe=recipe,
+                food=food,
+                name=name,
+                grams=grams,
+            )
+
+        recipe.recalculate_totals()
+        messages.success(request, 'Rețeta a fost creată.')
+        return redirect('recipe_detail', pk=recipe.pk)
+
+    foods = Food.objects.all().order_by('name')
+
+    return render(request, 'tracker/recipe_form.html', {
+        'profile': profile,
+        'recipe_form': recipe_form,
+        'foods': foods,
+        'editing': False,
+    })
+
+
+@login_required
+def recipe_edit_view(request, pk):
+    profile = get_or_create_profile(request.user)
+    recipe = get_object_or_404(Recipe, pk=pk, user=request.user)
+    recipe_form = RecipeForm(request.POST or None, request.FILES or None, instance=recipe)
+
+    if request.method == 'POST' and recipe_form.is_valid():
+        recipe = recipe_form.save()
+
+        recipe.ingredients.all().delete()
+
+        ingredient_names = request.POST.getlist('ingredient_name[]')
+        ingredient_grams = request.POST.getlist('ingredient_grams[]')
+        ingredient_foods = request.POST.getlist('ingredient_food[]')
+
+        for idx, name in enumerate(ingredient_names):
+            name = (name or '').strip()
+            grams = ingredient_grams[idx] if idx < len(ingredient_grams) else None
+            food_id = ingredient_foods[idx] if idx < len(ingredient_foods) else None
+
+            if not name or not grams:
+                continue
+
+            food = None
+            if food_id:
+                food = Food.objects.filter(pk=food_id).first()
+
+            RecipeIngredient.objects.create(
+                recipe=recipe,
+                food=food,
+                name=name,
+                grams=grams,
+            )
+
+        recipe.recalculate_totals()
+        messages.success(request, 'Rețeta a fost actualizată.')
+        return redirect('recipe_detail', pk=recipe.pk)
+
+    foods = Food.objects.all().order_by('name')
+
+    return render(request, 'tracker/recipe_form.html', {
+        'profile': profile,
+        'recipe': recipe,
+        'recipe_form': recipe_form,
+        'foods': foods,
+        'editing': True,
+    })
+
+
+@login_required
+def recipe_delete_view(request, pk):
+    recipe = get_object_or_404(Recipe, pk=pk, user=request.user)
+
+    if request.method == 'POST':
+        recipe.delete()
+        messages.success(request, 'Rețeta a fost ștearsă.')
+        return redirect('recipes')
+
+    return render(request, 'tracker/recipe_delete_confirm.html', {'recipe': recipe})
+
+
+@login_required
+def recipe_add_to_planner_view(request, pk):
+    recipe = get_object_or_404(Recipe, pk=pk, user=request.user)
+
+    if request.method != 'POST':
+        return HttpResponseForbidden('Metodă invalidă.')
+
+    form = MealPlanForm(request.POST, user=request.user)
+    if form.is_valid():
+        meal_plan = form.save(commit=False)
+        meal_plan.user = request.user
+        meal_plan.recipe = recipe
+        meal_plan.save()
+        messages.success(request, 'Rețeta a fost adăugată în planner.')
+    else:
+        messages.error(request, 'Nu am putut adăuga rețeta în planner.')
+
+    return redirect('recipe_detail', pk=recipe.pk)
+
+
+@login_required
+def planner_view(request):
+    profile = get_or_create_profile(request.user)
+
+    week_start_param = request.GET.get('week')
+    if week_start_param:
+        try:
+            selected_date = timezone.datetime.strptime(week_start_param, '%Y-%m-%d').date()
+        except ValueError:
+            selected_date = timezone.localdate()
+    else:
+        selected_date = timezone.localdate()
+
+    start_date, end_date = get_week_range(selected_date)
+
+    form = MealPlanForm(request.POST or None, user=request.user, initial={'date': timezone.localdate()})
+    if request.method == 'POST' and form.is_valid():
+        meal_plan = form.save(commit=False)
+        meal_plan.user = request.user
+        meal_plan.save()
+        messages.success(request, 'Masa a fost adăugată în planner.')
+        return redirect(f"{request.path}?week={start_date}")
+
+    week_days = build_planner_matrix(request.user, start_date, end_date)
+    plans = (
+        MealPlan.objects
+        .filter(user=request.user, date__range=[start_date, end_date])
+        .select_related('recipe')
+        .order_by('date', 'meal_type')
+    )
+
+    return render(request, 'tracker/planner.html', {
+        'profile': profile,
+        'form': form,
+        'week_days': week_days,
+        'plans': plans,
+        'start_date': start_date,
+        'end_date': end_date,
+        'prev_week': start_date - timedelta(days=7),
+        'next_week': start_date + timedelta(days=7),
+    })
+
+
+@login_required
+def shopping_list_view(request):
+    profile = get_or_create_profile(request.user)
+    shopping_list = (
+        ShoppingList.objects
+        .filter(user=request.user, is_active=True)
+        .prefetch_related('items__food', 'items__source_recipe')
+        .order_by('-created_at')
+        .first()
+    )
+
+    list_form = ShoppingListForm(request.POST or None)
+    item_form = ShoppingListItemForm(request.POST or None, user=request.user)
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'create_list' and list_form.is_valid():
+            ShoppingList.objects.filter(user=request.user, is_active=True).update(is_active=False)
+            new_list = list_form.save(commit=False)
+            new_list.user = request.user
+            new_list.is_active = True
+            new_list.save()
+            messages.success(request, 'Lista de cumpărături a fost creată.')
+            return redirect('shopping_list')
+
+        if action == 'add_item':
+            if not shopping_list:
+                messages.error(request, 'Creează mai întâi o listă activă.')
+                return redirect('shopping_list')
+
+            item_form = ShoppingListItemForm(request.POST, user=request.user)
+            if item_form.is_valid():
+                item = item_form.save(commit=False)
+                item.shopping_list = shopping_list
+                item.save()
+                messages.success(request, 'Produsul a fost adăugat în listă.')
+                return redirect('shopping_list')
+
+    return render(request, 'tracker/shopping_list.html', {
+        'profile': profile,
+        'shopping_list': shopping_list,
+        'list_form': list_form,
+        'item_form': item_form,
+    })
+
+
+@login_required
+def generate_shopping_list_view(request):
+    if request.method != 'POST':
+        return redirect('shopping_list')
+
+    start_date, end_date = get_week_range(timezone.localdate())
+    aggregated = aggregate_shopping_items_from_plans(request.user, start_date, end_date)
+
+    ShoppingList.objects.filter(user=request.user, is_active=True).update(is_active=False)
+
+    shopping_list = ShoppingList.objects.create(
+        user=request.user,
+        name=f'Lista {start_date} - {end_date}',
+        start_date=start_date,
+        end_date=end_date,
+        is_active=True,
+    )
+
+    for item in aggregated:
+        ShoppingListItem.objects.create(
+            shopping_list=shopping_list,
+            food=item['food'],
+            name=item['name'],
+            quantity=round(item['quantity'], 1),
+            unit=item['unit'],
+            source_recipe=item['source_recipe'],
+        )
+
+    messages.success(request, 'Lista de cumpărături a fost generată din planner.')
+    return redirect('shopping_list')
+
+
 @login_required
 def settings_view(request):
     profile = get_or_create_profile(request.user)
 
     profile_form = UserProfileForm(instance=profile)
-    theme_form   = ThemeForm(instance=profile)
+    theme_form = ThemeForm(instance=profile)
 
     if request.method == 'POST':
         action = request.POST.get('action')
@@ -488,7 +621,7 @@ def settings_view(request):
             theme_form = ThemeForm(request.POST, instance=profile)
             if theme_form.is_valid():
                 theme_form.save()
-                messages.success(request, 'Tema schimbata cu succes!')
+                messages.success(request, 'Tema a fost actualizată.')
                 return redirect('settings')
 
         elif action == 'update_profile':
@@ -498,153 +631,180 @@ def settings_view(request):
                 messages.success(request, 'Profilul a fost actualizat.')
                 return redirect('settings')
 
+    themes = [
+        {
+            'key': 'midnight',
+            'name': 'Graphite Peach',
+            'desc': 'Dark modern, moale și premium.',
+            'top': 'linear-gradient(90deg, #e58b6b, #8ea7ff)',
+            'bg': '#171b22',
+            'line': '#e58b6b',
+            'muted': '#2d3440',
+            'block': '#1d222b',
+        },
+        {
+            'key': 'linen',
+            'name': 'Soft Sand',
+            'desc': 'Light warm, editorial și aerisit.',
+            'top': 'linear-gradient(90deg, #c9784a, #8b7cf6)',
+            'bg': '#fdfaf6',
+            'line': '#c9784a',
+            'muted': '#e7ddd2',
+            'block': '#fffdf9',
+        },
+    ]
+
     return render(request, 'tracker/settings.html', {
-        'profile':      profile,
+        'profile': profile,
         'profile_form': profile_form,
-        'theme_form':   theme_form,
-        'themes': [
-            {'key': 'dark-aura',  'name': 'Dark Aura',  'desc': 'Violet pe fundal intunecat',   'preview': '#0d0d14'},
-            {'key': 'fresh-mint', 'name': 'Fresh Mint', 'desc': 'Verde proaspat si luminos',    'preview': '#f0fdf4'},
-            {'key': 'warm-coral', 'name': 'Warm Coral', 'desc': 'Portocaliu energic si cald',   'preview': '#fff7f5'},
-            {'key': 'slate-pro',  'name': 'Slate Pro',  'desc': 'Albastru profesional si curat','preview': '#f8fafc'},
-        ],
+        'theme_form': theme_form,
+        'themes': themes,
     })
 
-
-#  AJAX — schimbare tema rapida
-@login_required
-def set_theme_ajax(request):
-    if request.method == 'POST':
-        data  = json.loads(request.body)
-        theme = data.get('theme', 'dark-aura')
-        valid = [t[0] for t in UserProfile.THEME_CHOICES]
-        if theme in valid:
-            profile       = get_or_create_profile(request.user)
-            profile.theme = theme
-            profile.save(update_fields=['theme'])
-            return JsonResponse({'success': True, 'theme': theme})
-    return JsonResponse({'success': False}, status=400)
-
-
-#  ALIMENTE PERSONALIZATE
 @login_required
 def foods_view(request):
-    custom_foods = Food.objects.filter(created_by=request.user, is_custom=True)
-    all_foods    = Food.objects.filter(is_custom=False)
+    profile = get_or_create_profile(request.user)
+    query = request.GET.get('q', '').strip()
+
+    foods = Food.objects.all().order_by('name')
+    if query:
+        foods = foods.filter(name__icontains=query)
+
     return render(request, 'tracker/foods.html', {
-        'custom_foods': custom_foods,
-        'all_foods':    all_foods,
-        'form':         CustomFoodForm(),
+        'profile': profile,
+        'foods': foods,
+        'query': query,
     })
 
 
 @login_required
-def food_create(request):
-    if request.method == 'POST':
-        form = CustomFoodForm(request.POST)
-        if form.is_valid():
-            food            = form.save(commit=False)
-            food.is_custom  = True
-            food.created_by = request.user
-            food.save()
-            messages.success(request, f'Alimentul "{food.name}" a fost adaugat.')
-        else:
-            messages.error(request, 'Date invalide.')
-    return redirect('foods')
+def food_create_view(request):
+    profile = get_or_create_profile(request.user)
+    form = CustomFoodForm(request.POST or None)
+
+    if request.method == 'POST' and form.is_valid():
+        food = form.save(commit=False)
+        food.created_by = request.user
+        food.is_custom = True
+        food.save()
+        messages.success(request, 'Alimentul a fost adăugat.')
+        return redirect('foods')
+
+    return render(request, 'tracker/food_form.html', {
+        'profile': profile,
+        'form': form,
+    })
 
 
-# ─────────────────────────────────────────
-#  OPEN FOOD FACTS — cautare si import
-# ─────────────────────────────────────────
+@login_required
+def nutrition_calc(request):
+    food_id = request.GET.get('food_id')
+    grams = request.GET.get('grams')
+
+    if not food_id or not grams:
+        return JsonResponse({'error': 'Parametri lipsă.'}, status=400)
+
+    try:
+        food = Food.objects.get(pk=food_id)
+        nutrition = food.calculate_nutrition(float(grams))
+        return JsonResponse(nutrition)
+    except (Food.DoesNotExist, ValueError):
+        return JsonResponse({'error': 'Date invalide.'}, status=400)
+
+
+@login_required
+def set_theme_ajax(request):
+    if request.method != 'POST':
+        return JsonResponse({'success': False}, status=405)
+
+    theme = request.POST.get('theme')
+    profile = get_or_create_profile(request.user)
+
+    valid_themes = [choice[0] for choice in UserProfile.THEME_CHOICES]
+    if theme not in valid_themes:
+        return JsonResponse({'success': False, 'error': 'Temă invalidă.'}, status=400)
+
+    profile.theme = theme
+    profile.save(update_fields=['theme', 'updated_at'])
+
+    return JsonResponse({'success': True, 'theme': theme})
+
+
+@login_required
+def food_autocomplete(request):
+    q = request.GET.get('q', '').strip()
+    foods = Food.objects.all()
+
+    if q:
+        foods = foods.filter(name__icontains=q)
+
+    results = [
+        {
+            'id': food.id,
+            'name': food.name,
+            'category': food.category,
+            'kcal_per_100g': float(food.kcal_per_100g),
+        }
+        for food in foods[:12]
+    ]
+
+    return JsonResponse({'results': results})
+
+
 @login_required
 def off_search(request):
-    """
-    AJAX: cauta alimente in Open Food Facts dupa text.
-    GET ?q=chicken&page=1
-    Returneaza JSON cu lista de produse.
-    """
     query = request.GET.get('q', '').strip()
-    page  = int(request.GET.get('page', 1))
+    if not query:
+        return JsonResponse({'results': []})
 
-    if len(query) < 2:
-        return JsonResponse({'results': [], 'query': query})
-
-    from .openfoodfacts_service import search_foods
-    results = search_foods(query, page=page, page_size=15)
-    return JsonResponse({'results': results, 'query': query, 'page': page})
+    results = off_search_products(query)
+    return JsonResponse({'results': results})
 
 
 @login_required
 def off_barcode(request):
-    """
-    AJAX: cauta un produs dupa codul de bare.
-    GET ?code=3017620422003
-    """
-    code = request.GET.get('code', '').strip()
-    if not code:
-        return JsonResponse({'success': False, 'error': 'Cod lipsa'})
+    barcode = request.GET.get('barcode', '').strip()
+    if not barcode:
+        return JsonResponse({'product': None}, status=400)
 
-    from .openfoodfacts_service import get_product_by_barcode
-    product = get_product_by_barcode(code)
-    if not product:
-        return JsonResponse({'success': False, 'error': 'Produs negasit'})
-
-    return JsonResponse({'success': True, 'product': product})
+    product = get_product_by_barcode(barcode)
+    return JsonResponse({'product': product})
 
 
 @login_required
 def off_import(request):
-    """
-    POST: importa un produs din OFF in baza de date locala.
-    Body JSON: { off_code, name, category, kcal, protein, carbs, fat, fiber }
-    """
     if request.method != 'POST':
         return JsonResponse({'success': False}, status=405)
 
-    data = json.loads(request.body)
-    from .openfoodfacts_service import import_product_to_db
-    food, created = import_product_to_db(data, user=request.user)
+    name = request.POST.get('name', '').strip()
+    category = request.POST.get('category', 'other')
+    kcal = request.POST.get('kcal_per_100g', 0)
+    protein = request.POST.get('protein_per_100g', 0)
+    carbs = request.POST.get('carbs_per_100g', 0)
+    fat = request.POST.get('fat_per_100g', 0)
+    fiber = request.POST.get('fiber_per_100g', 0)
+    off_code = request.POST.get('off_code', '').strip()
+
+    if not name:
+        return JsonResponse({'success': False, 'error': 'Numele lipsește.'}, status=400)
+
+    food = Food.objects.create(
+        name=name,
+        category=category,
+        kcal_per_100g=kcal or 0,
+        protein_per_100g=protein or 0,
+        carbs_per_100g=carbs or 0,
+        fat_per_100g=fat or 0,
+        fiber_per_100g=fiber or 0,
+        off_code=off_code,
+        is_custom=True,
+        created_by=request.user,
+    )
 
     return JsonResponse({
         'success': True,
-        'food_id': food.pk,
-        'food_name': food.name,
-        'created': created,
-        'kcal': float(food.kcal_per_100g),
-        'protein': float(food.protein_per_100g),
-        'carbs': float(food.carbs_per_100g),
-        'fat': float(food.fat_per_100g),
-    })
-
-# ─────────────────────────────────────────
-#  AJAX — autocomplete alimente
-# ─────────────────────────────────────────
-@login_required
-def food_autocomplete(request):
-    """
-    GET ?q=pui
-    Returneaza max 10 alimente care contin termenul cautat.
-    """
-    q = request.GET.get('q', '').strip()
-    if len(q) < 2:
-        return JsonResponse({'results': []})
-
-    from django.db.models import Q
-    foods = Food.objects.filter(
-        Q(name__icontains=q)
-    ).order_by('name')[:10]
-
-    results = [
-        {
-            'id':       f.pk,
-            'name':     f.name,
-            'kcal':     float(f.kcal_per_100g),
-            'protein':  float(f.protein_per_100g),
-            'carbs':    float(f.carbs_per_100g),
-            'fat':      float(f.fat_per_100g),
-            'category': f.get_category_display(),
-            'off':      bool(f.off_code),
+        'food': {
+            'id': food.id,
+            'name': food.name,
         }
-        for f in foods
-    ]
-    return JsonResponse({'results': results})
+    })

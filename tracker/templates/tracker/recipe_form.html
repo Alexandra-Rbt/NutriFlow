@@ -1,118 +1,228 @@
 {% extends 'base.html' %}
-{% block title %}{{ page_title }} — NutriFlow{% endblock %}
+
+{% block title %}
+  {% if editing %}Editează rețeta{% else %}Rețetă nouă{% endif %} — NutriFlow
+{% endblock %}
+
+{% block page_title %}
+  {% if editing %}Editează rețeta{% else %}Rețetă nouă{% endif %}
+{% endblock %}
+
+{% block page_subtitle %}
+  {% if editing %}
+    Actualizează detaliile și ingredientele rețetei.
+  {% else %}
+    Creează o rețetă nouă pe care o vei putea planifica în săptămână.
+  {% endif %}
+{% endblock %}
 
 {% block content %}
-<div class="recipe-form-page">
-  <section class="nf-card recipe-form-card">
-    <div class="recipe-form-header">
-      <div>
-        <p class="nf-eyebrow">Editor rețetă</p>
-        <h1>{{ page_title }}</h1>
-        <p>Adaugă informațiile de bază și ingredientele rețetei tale.</p>
-      </div>
-      <a href="{% url 'recipes' %}" class="btn btn-secondary">Înapoi</a>
-    </div>
+<form method="post" enctype="multipart/form-data" class="form-grid">
+  {% csrf_token %}
 
-    <form method="post" enctype="multipart/form-data" novalidate>
-      {% csrf_token %}
-
-      <div class="recipe-main-fields">
-        {{ form.as_p }}
+  <section class="grid-2">
+    <article class="card">
+      <div class="card-header">
+        <div>
+          <h2 class="card-title">Detalii rețetă</h2>
+          <p class="card-subtitle">Informațiile de bază și descrierea generală.</p>
+        </div>
       </div>
 
-      <div class="ingredients-section">
-        <div class="ingredients-header">
-          <h2>Ingrediente</h2>
-          <button type="button" id="addIngredientBtn" class="btn btn-secondary btn-sm">+ Adaugă ingredient</button>
+      <div class="form-grid">
+        <div class="field-group">
+          <label for="{{ recipe_form.name.id_for_label }}">Nume</label>
+          {{ recipe_form.name }}
         </div>
 
-        {{ formset.management_form }}
+        <div class="field-group">
+          <label for="{{ recipe_form.description.id_for_label }}">Descriere</label>
+          {{ recipe_form.description }}
+        </div>
 
-        {% if formset.non_form_errors %}
-          <div class="form-errors">
-            {{ formset.non_form_errors }}
+        <div class="form-grid cols-2">
+          <div class="field-group">
+            <label for="{{ recipe_form.servings.id_for_label }}">Porții</label>
+            {{ recipe_form.servings }}
+          </div>
+
+          <div class="field-group">
+            <label for="{{ recipe_form.image.id_for_label }}">Imagine</label>
+            {{ recipe_form.image }}
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label for="{{ recipe_form.instructions.id_for_label }}">Instrucțiuni</label>
+          {{ recipe_form.instructions }}
+        </div>
+      </div>
+    </article>
+
+    <article class="card">
+      <div class="card-header">
+        <div>
+          <h2 class="card-title">Ingrediente</h2>
+          <p class="card-subtitle">Poți adăuga mai multe ingrediente și le poți asocia cu alimente existente.</p>
+        </div>
+
+        <button type="button" class="btn btn-secondary btn-sm" id="add-ingredient-btn">
+          Adaugă rând
+        </button>
+      </div>
+
+      <div id="ingredients-wrapper" class="form-grid">
+        {% if editing and recipe.ingredients.all %}
+          {% for ingredient in recipe.ingredients.all %}
+          <div class="ingredient-row surface-card" style="padding:18px;">
+            <div class="form-grid cols-2">
+              <div class="field-group" style="grid-column: 1 / -1;">
+                <label>Nume ingredient</label>
+                <input type="text" name="ingredient_name[]" value="{{ ingredient.name }}" placeholder="Ex: piept de pui">
+              </div>
+
+              <div class="field-group">
+                <label>Cantitate (g)</label>
+                <input type="number" step="0.01" name="ingredient_grams[]" value="{{ ingredient.grams }}" placeholder="Ex: 150">
+              </div>
+
+              <div class="field-group">
+                <label>Aliment asociat</label>
+                <select name="ingredient_food[]">
+                  <option value="">— Selectează aliment —</option>
+                  {% for food in foods %}
+                    <option value="{{ food.id }}" {% if ingredient.food and ingredient.food.id == food.id %}selected{% endif %}>
+                      {{ food.name }}
+                    </option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+
+            <div class="row-actions" style="margin-top:12px;">
+              <button type="button" class="btn btn-danger btn-sm remove-ingredient-btn">Șterge</button>
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="ingredient-row surface-card" style="padding:18px;">
+            <div class="form-grid cols-2">
+              <div class="field-group" style="grid-column: 1 / -1;">
+                <label>Nume ingredient</label>
+                <input type="text" name="ingredient_name[]" placeholder="Ex: ovăz, banană, iaurt">
+              </div>
+
+              <div class="field-group">
+                <label>Cantitate (g)</label>
+                <input type="number" step="0.01" name="ingredient_grams[]" placeholder="Ex: 100">
+              </div>
+
+              <div class="field-group">
+                <label>Aliment asociat</label>
+                <select name="ingredient_food[]">
+                  <option value="">— Selectează aliment —</option>
+                  {% for food in foods %}
+                    <option value="{{ food.id }}">{{ food.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+
+            <div class="row-actions" style="margin-top:12px;">
+              <button type="button" class="btn btn-danger btn-sm remove-ingredient-btn">Șterge</button>
+            </div>
           </div>
         {% endif %}
-
-        <div id="ingredientForms" class="ingredient-forms">
-          {% for ing_form in formset %}
-            <div class="ingredient-row nf-card">
-              {% for hidden in ing_form.hidden_fields %}
-                {{ hidden }}
-              {% endfor %}
-
-              <div class="ingredient-row-grid">
-                <div class="field-group">
-                  <label for="{{ ing_form.name.id_for_label }}">Ingredient</label>
-                  {{ ing_form.name }}
-                  {% if ing_form.name.errors %}
-                    <div class="field-error">{{ ing_form.name.errors }}</div>
-                  {% endif %}
-                </div>
-
-                <div class="field-group">
-                  <label for="{{ ing_form.grams.id_for_label }}">Grame</label>
-                  {{ ing_form.grams }}
-                  {% if ing_form.grams.errors %}
-                    <div class="field-error">{{ ing_form.grams.errors }}</div>
-                  {% endif %}
-                </div>
-
-                <div class="field-group delete-group">
-                  {% if ing_form.DELETE %}
-                    <label>Ștergere</label>
-                    <div class="delete-checkbox">{{ ing_form.DELETE }} <span>Marchează pentru ștergere</span></div>
-                  {% endif %}
-                </div>
-              </div>
-            </div>
-          {% endfor %}
-        </div>
-
-        <template id="emptyIngredientForm">
-          <div class="ingredient-row nf-card">
-            <div class="ingredient-row-grid">
-              <div class="field-group">
-                <label for="id_ingredients-__prefix__-name">Ingredient</label>
-                {{ formset.empty_form.name }}
-              </div>
-
-              <div class="field-group">
-                <label for="id_ingredients-__prefix__-grams">Grame</label>
-                {{ formset.empty_form.grams }}
-              </div>
-
-              <div class="field-group delete-group">
-                <label>Ștergere</label>
-                <div class="delete-checkbox">{{ formset.empty_form.DELETE }} <span>Marchează pentru ștergere</span></div>
-              </div>
-            </div>
-          </div>
-        </template>
       </div>
-
-      <div class="recipe-form-actions">
-        <button type="submit" class="btn btn-primary">{{ submit_label }}</button>
-      </div>
-    </form>
+    </article>
   </section>
-</div>
 
+  <section class="card">
+    <div class="card-header">
+      <div>
+        <h2 class="card-title">Acțiuni</h2>
+        <p class="card-subtitle">Salvează rețeta sau revino la listă.</p>
+      </div>
+    </div>
+
+    <div class="page-actions">
+      <button type="submit" class="btn btn-primary">
+        {% if editing %}Salvează modificările{% else %}Creează rețeta{% endif %}
+      </button>
+
+      <a href="{% url 'recipes' %}" class="btn btn-ghost">Anulează</a>
+    </div>
+  </section>
+</form>
+
+<template id="ingredient-row-template">
+  <div class="ingredient-row surface-card" style="padding:18px;">
+    <div class="form-grid cols-2">
+      <div class="field-group" style="grid-column: 1 / -1;">
+        <label>Nume ingredient</label>
+        <input type="text" name="ingredient_name[]" placeholder="Ex: piept de pui">
+      </div>
+
+      <div class="field-group">
+        <label>Cantitate (g)</label>
+        <input type="number" step="0.01" name="ingredient_grams[]" placeholder="Ex: 150">
+      </div>
+
+      <div class="field-group">
+        <label>Aliment asociat</label>
+        <select name="ingredient_food[]">
+          <option value="">— Selectează aliment —</option>
+          {% for food in foods %}
+            <option value="{{ food.id }}">{{ food.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <div class="row-actions" style="margin-top:12px;">
+      <button type="button" class="btn btn-danger btn-sm remove-ingredient-btn">Șterge</button>
+    </div>
+  </div>
+</template>
+{% endblock %}
+
+{% block extra_js %}
 <script>
   (function () {
-    const addBtn = document.getElementById('addIngredientBtn');
-    const formsContainer = document.getElementById('ingredientForms');
-    const totalForms = document.getElementById('id_ingredients-TOTAL_FORMS');
-    const template = document.getElementById('emptyIngredientForm');
+    const wrapper = document.getElementById('ingredients-wrapper');
+    const addBtn = document.getElementById('add-ingredient-btn');
+    const template = document.getElementById('ingredient-row-template');
 
-    if (!addBtn || !formsContainer || !totalForms || !template) return;
+    function bindRemoveButtons(scope = document) {
+      scope.querySelectorAll('.remove-ingredient-btn').forEach((btn) => {
+        if (btn.dataset.bound === '1') return;
+        btn.dataset.bound = '1';
 
-    addBtn.addEventListener('click', function () {
-      const formIndex = parseInt(totalForms.value, 10);
-      const html = template.innerHTML.replace(/__prefix__/g, formIndex);
-      formsContainer.insertAdjacentHTML('beforeend', html);
-      totalForms.value = formIndex + 1;
+        btn.addEventListener('click', function () {
+          const rows = wrapper.querySelectorAll('.ingredient-row');
+          if (rows.length === 1) {
+            const inputs = rows[0].querySelectorAll('input, select');
+            inputs.forEach((field) => {
+              if (field.tagName === 'SELECT') {
+                field.selectedIndex = 0;
+              } else {
+                field.value = '';
+              }
+            });
+            return;
+          }
+          btn.closest('.ingredient-row').remove();
+        });
+      });
+    }
+
+    addBtn?.addEventListener('click', function () {
+      const clone = template.content.cloneNode(true);
+      wrapper.appendChild(clone);
+      bindRemoveButtons(wrapper);
     });
+
+    bindRemoveButtons(wrapper);
   })();
 </script>
 {% endblock %}

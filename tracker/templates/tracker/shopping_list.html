@@ -1,0 +1,168 @@
+{% extends 'base.html' %}
+
+{% block title %}Lista de cumpărături — NutriFlow{% endblock %}
+{% block page_title %}Lista de cumpărături{% endblock %}
+{% block page_subtitle %}Gestionează ingredientele de care ai nevoie pentru mesele planificate.{% endblock %}
+
+{% block content %}
+<section class="grid-2">
+  <article class="card">
+    <div class="card-header">
+      <div>
+        <h2 class="card-title">Lista activă</h2>
+        <p class="card-subtitle">
+          {% if shopping_list %}
+            {{ shopping_list.name }} · {{ shopping_list.start_date|date:"d M" }} — {{ shopping_list.end_date|date:"d M Y" }}
+          {% else %}
+            Nu există încă o listă activă
+          {% endif %}
+        </p>
+      </div>
+
+      <div class="page-actions">
+        <form method="post" action="{% url 'generate_shopping_list' %}">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-primary btn-sm">Generează din planner</button>
+        </form>
+      </div>
+    </div>
+
+    {% if shopping_list and shopping_list.items.all %}
+      <div class="form-grid">
+        {% for item in shopping_list.items.all %}
+        <div class="surface-card" style="padding:18px;">
+          <div class="card-header" style="margin-bottom:8px;">
+            <div>
+              <h3 class="card-title" style="font-size:1rem;">{{ item.name }}</h3>
+              <p class="card-subtitle">
+                {{ item.quantity }} {{ item.unit }}
+                {% if item.source_recipe %}
+                  · din {{ item.source_recipe.name }}
+                {% endif %}
+              </p>
+            </div>
+
+            {% if item.is_checked %}
+              <span class="badge">Luate</span>
+            {% else %}
+              <span class="badge" style="background:var(--surface-3);color:var(--text-muted);">De cumpărat</span>
+            {% endif %}
+          </div>
+
+          {% if item.food %}
+            <p class="section-copy" style="margin-bottom:0;">Aliment conectat: {{ item.food.name }}</p>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <div class="empty-icon">🛒</div>
+        <h3>Lista ta este goală</h3>
+        <p>Poți genera automat ingredientele din planner sau poți adăuga produse manual.</p>
+        <div class="page-actions" style="justify-content:center;">
+          <form method="post" action="{% url 'generate_shopping_list' %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-primary">Generează din planner</button>
+          </form>
+        </div>
+      </div>
+    {% endif %}
+  </article>
+
+  <article class="card">
+    <div class="card-header">
+      <div>
+        <h2 class="card-title">Administrare listă</h2>
+        <p class="card-subtitle">Creează o listă nouă sau adaugă rapid produse manual.</p>
+      </div>
+    </div>
+
+    <div class="form-grid">
+      <div class="surface-card" style="padding:20px;">
+        <h3 class="section-title">Listă nouă</h3>
+        <p class="section-copy">Folosește o listă separată pentru săptămâna curentă sau pentru cumpărături speciale.</p>
+
+        <form method="post" class="form-grid">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="create_list">
+
+          <div class="field-group">
+            <label for="{{ list_form.name.id_for_label }}">Nume listă</label>
+            {{ list_form.name }}
+          </div>
+
+          <div class="form-grid cols-2">
+            <div class="field-group">
+              <label for="{{ list_form.start_date.id_for_label }}">Data început</label>
+              {{ list_form.start_date }}
+            </div>
+
+            <div class="field-group">
+              <label for="{{ list_form.end_date.id_for_label }}">Data sfârșit</label>
+              {{ list_form.end_date }}
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label for="{{ list_form.is_active.id_for_label }}">Status</label>
+            <div class="surface-card" style="padding:14px;min-height:48px;display:flex;align-items:center;">
+              {{ list_form.is_active }}
+              <span style="margin-left:10px;color:var(--text-muted);">Setează această listă ca activă</span>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-secondary">Creează listă</button>
+        </form>
+      </div>
+
+      <div class="surface-card" style="padding:20px;">
+        <h3 class="section-title">Adaugă produs</h3>
+        <p class="section-copy">Completează un ingredient manual dacă nu vine direct din planner.</p>
+
+        <form method="post" class="form-grid">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="add_item">
+
+          <div class="field-group">
+            <label for="{{ item_form.name.id_for_label }}">Nume</label>
+            {{ item_form.name }}
+          </div>
+
+          <div class="form-grid cols-2">
+            <div class="field-group">
+              <label for="{{ item_form.quantity.id_for_label }}">Cantitate</label>
+              {{ item_form.quantity }}
+            </div>
+
+            <div class="field-group">
+              <label for="{{ item_form.unit.id_for_label }}">Unitate</label>
+              {{ item_form.unit }}
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label for="{{ item_form.food.id_for_label }}">Aliment asociat</label>
+            {{ item_form.food }}
+          </div>
+
+          <div class="field-group">
+            <label for="{{ item_form.source_recipe.id_for_label }}">Rețetă sursă</label>
+            {{ item_form.source_recipe }}
+          </div>
+
+          <div class="field-group">
+            <label for="{{ item_form.is_checked.id_for_label }}">Status</label>
+            <div class="surface-card" style="padding:14px;min-height:48px;display:flex;align-items:center;">
+              {{ item_form.is_checked }}
+              <span style="margin-left:10px;color:var(--text-muted);">Marchează dacă este deja cumpărat</span>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary">Adaugă produs</button>
+        </form>
+      </div>
+    </div>
+  </article>
+</section>
+{% endblock %}

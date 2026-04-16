@@ -1,0 +1,122 @@
+{% extends 'base.html' %}
+
+{% block title %}Adaugă aliment — NutriFlow{% endblock %}
+{% block page_title %}Adaugă aliment{% endblock %}
+{% block page_subtitle %}Completează valorile nutriționale pentru a folosi alimentul în jurnal și rețete.{% endblock %}
+
+{% block content %}
+<section class="grid-2">
+  <article class="card">
+    <div class="card-header">
+      <div>
+        <h2 class="card-title">Detalii aliment</h2>
+        <p class="card-subtitle">Introdu valorile pe 100g pentru calcule corecte în toată aplicația.</p>
+      </div>
+    </div>
+
+    <form method="post" class="form-grid">
+      {% csrf_token %}
+
+      <div class="form-grid">
+        <div class="field-group">
+          <label for="{{ form.name.id_for_label }}">Nume</label>
+          {{ form.name }}
+        </div>
+
+        <div class="field-group">
+          <label for="{{ form.category.id_for_label }}">Categorie</label>
+          {{ form.category }}
+        </div>
+
+        <div class="form-grid cols-2">
+          <div class="field-group">
+            <label for="{{ form.kcal_per_100g.id_for_label }}">Calorii / 100g</label>
+            {{ form.kcal_per_100g }}
+          </div>
+
+          <div class="field-group">
+            <label for="{{ form.protein_per_100g.id_for_label }}">Proteine / 100g</label>
+            {{ form.protein_per_100g }}
+          </div>
+
+          <div class="field-group">
+            <label for="{{ form.carbs_per_100g.id_for_label }}">Carbohidrați / 100g</label>
+            {{ form.carbs_per_100g }}
+          </div>
+
+          <div class="field-group">
+            <label for="{{ form.fat_per_100g.id_for_label }}">Grăsimi / 100g</label>
+            {{ form.fat_per_100g }}
+          </div>
+
+          <div class="field-group">
+            <label for="{{ form.fiber_per_100g.id_for_label }}">Fibre / 100g</label>
+            {{ form.fiber_per_100g }}
+          </div>
+
+          {% if form.off_code %}
+          <div class="field-group">
+            <label for="{{ form.off_code.id_for_label }}">Cod Open Food Facts</label>
+            {{ form.off_code }}
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="page-actions">
+        <button type="submit" class="btn btn-primary">Salvează alimentul</button>
+        <a href="{% url 'foods' %}" class="btn btn-ghost">Înapoi la alimente</a>
+      </div>
+    </form>
+  </article>
+
+  <article class="card">
+    <div class="card-header">
+      <div>
+        <h2 class="card-title">Ghid rapid</h2>
+        <p class="card-subtitle">Cum să completezi corect datele nutriționale.</p>
+      </div>
+    </div>
+
+    <div class="surface-card" style="padding:20px;margin-bottom:18px;">
+      <h3 class="section-title">Ce introduci</h3>
+      <p class="section-copy">
+        Completează valorile per 100g, deoarece aceasta este una dintre cele mai folosite convenții pentru bazele de date nutriționale și face calculele mult mai ușor de standardizat în aplicație. [web:355][web:356][web:361]
+      </p>
+    </div>
+
+    <div class="surface-card" style="padding:20px;margin-bottom:18px;">
+      <h3 class="section-title">De ce contează</h3>
+      <p class="section-copy">
+        Dacă datele sunt corecte aici, atunci jurnalul alimentar, rețetele și calculatorul de nutriție vor produce rezultate coerente mai departe. Modelele de aplicații nutriționale depind puternic de consistența datelor la nivel de aliment. [web:349][web:354][web:363]
+      </p>
+    </div>
+
+    <div class="surface-card" style="padding:20px;">
+      <h3 class="section-title">Exemplu</h3>
+      <div class="table-wrap">
+        <table class="simple-table">
+          <thead>
+            <tr>
+              <th>Aliment</th>
+              <th>Kcal</th>
+              <th>P</th>
+              <th>C</th>
+              <th>F</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Iaurt grecesc</td>
+              <td>97</td>
+              <td>9.0</td>
+              <td>3.6</td>
+              <td>5.0</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </article>
+</section>
+{% endblock %}
